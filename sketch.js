@@ -1,3 +1,4 @@
+const BRUSH_V2_PREVIEW = true;
 const SPACE_BG = [3, 6, 20];
 // STAR transition
 let enteringStar = null;
@@ -27,15 +28,25 @@ let inputMechanic;
 
 function setup() {
   createCanvas(800, 600);
+  pixelDensity(1);
   textFont("Arial");
 
   inputMechanic = new InputMechanic();
 
-  generateUniverse(universeSeed);
-  initDebugGUI();
+  if (BRUSH_V2_PREVIEW) {
+    initBrushV2(universeSeed);
+    initBrushFlowShader();
+  } else {
+    generateUniverse(universeSeed);
+    initDebugGUI();
+  }
 }
 
 function draw() {
+  if (BRUSH_V2_PREVIEW) {
+    drawBrushFlowShader();
+    return;
+  }
   background(0);
 
   switch (currentState) {
@@ -342,9 +353,54 @@ function startNewUniverse() {
 
   changeState(STATES.NIGHT);
 }
-// Temporary keyboard controls
 
+
+// Temporary keyboard controls
 function keyPressed() {
+  if (BRUSH_V2_PREVIEW) {
+    const testSeeds = {
+      q: 12,
+      w: 89,
+      e: 205
+    };
+
+    if (key === "f" || key === "F") {
+      brushFlowSettings.enabled =
+        !brushFlowSettings.enabled;
+    }
+
+    if (key === " ") {
+      brushFlowSettings.paused =
+        !brushFlowSettings.paused;
+    }
+
+    if (key === "[") {
+      brushFlowSettings.strength = Math.max(
+        0,
+        brushFlowSettings.strength - 2
+      );
+    }
+
+    if (key === "]") {
+      brushFlowSettings.strength = Math.min(
+        30,
+        brushFlowSettings.strength + 2
+      );
+    }
+
+    console.log("Flow settings:", brushFlowSettings);
+
+    const seed = testSeeds[key.toLowerCase()];
+
+    if (seed !== undefined) {
+      universeSeed = seed;
+      initBrushV2(seed);
+      rebuildBrushFlowMap();
+      brushFlowTime = 0;
+    }
+
+    return;
+  }
   if (key === "1") changeState(STATES.NIGHT);
   if (key === "2") changeState(STATES.SPACE);
   if (key === "q" || key === "Q") loadTestUniverse(12);
@@ -370,6 +426,9 @@ function loadTestUniverse(seed) {
 
 
 function mouseWheel(event) {
+  if (BRUSH_V2_PREVIEW) {
+    return false;
+  }
   // Ignore scroll on debug GUI
   if (
     event.target &&
