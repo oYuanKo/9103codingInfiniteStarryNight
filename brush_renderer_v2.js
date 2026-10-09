@@ -11,8 +11,8 @@ const BRUSH_V2_SETTINGS = {
     motionAlpha: 165,
 
     // Star composition
-    majorStarCount: 7,
-    smallStarCount: 18,
+    majorStarCount: 5,
+    smallStarCount: 12,
     moonRadius: 28,
     starMinRadius: 10,
     starMaxRadius: 18
@@ -34,11 +34,13 @@ const STAR_BRUSH_COLORS = {
     pale: [255, 235, 170]
 };
 
+
 function generateBrushV2Stars() {
     const stars = [];
 
-    // One larger moon / dominant star
+    // 1. Main moon: dominant focal point
     stars.push({
+        id: "moon",
         x: width * 0.83,
         y: height * 0.17,
         radius: BRUSH_V2_SETTINGS.moonRadius,
@@ -46,33 +48,105 @@ function generateBrushV2Stars() {
         enterRadius: BRUSH_V2_SETTINGS.moonRadius * 1.8
     });
 
-    // Main stars, mostly in the upper sky
-    for (let i = 0; i < BRUSH_V2_SETTINGS.majorStarCount; i++) {
+    // 2. Composition anchors for major stars
+    // Normalised positions: 0-1
+    const majorAnchors = [
+        [0.16, 0.13],
+        [0.34, 0.105],
+        [0.22, 0.34],
+        [0.58, 0.14],
+        [0.72, 0.41]
+    ];
+
+    const majorCount = Math.min(
+        BRUSH_V2_SETTINGS.majorStarCount,
+        majorAnchors.length
+    );
+
+    for (let i = 0; i < majorCount; i++) {
+        const [ax, ay] = majorAnchors[i];
+
+        // Seed-controlled variation around each anchor
+        const x = width * (
+            ax + random(-0.012, 0.012)
+        );
+
+        const y = height * (
+            ay + random(-0.016, 0.016)
+        );
+
+        // First two major stars are more prominent
+        const radius = i < 2
+            ? random(14, 18)
+            : random(10, 13.5);
+
         stars.push({
-            x: random(width * 0.08, width * 0.92),
-            y: random(height * 0.08, height * 0.46),
-            radius: random(
-                BRUSH_V2_SETTINGS.starMinRadius,
-                BRUSH_V2_SETTINGS.starMaxRadius
-            ),
+            id: `major-${i}`,
+            x, y,
+            radius,
             type: "major",
-            enterRadius: random(22, 34)
+            enterRadius: radius * 2
         });
     }
 
-    // Smaller stars for support
-    for (let i = 0; i < BRUSH_V2_SETTINGS.smallStarCount; i++) {
-        stars.push({
-            x: random(width * 0.05, width * 0.95),
-            y: random(height * 0.06, height * 0.55),
-            radius: random(3, 6),
-            type: "small",
-            enterRadius: 10
+    // 3. Smaller supporting stars
+    let attempts = 0;
+    let placed = 0;
+
+    while (
+        placed < BRUSH_V2_SETTINGS.smallStarCount &&
+        attempts < 1500
+    ) {
+        attempts++;
+
+        const x = random(width * 0.06, width * 0.94);
+        const y = random(height * 0.06, height * 0.54);
+        const radius = random(3, 5);
+
+        // Keep the main vortex visually open
+        const vortexDistance = dist(
+            x, y,
+            width * 0.48,
+            height * 0.32
+        );
+
+        if (vortexDistance < min(width, height) * 0.14) {
+            continue;
+        }
+
+        // Avoid overcrowding and overlapping halos
+        const overlaps = stars.some(star => {
+            const d = dist(x, y, star.x, star.y);
+
+            let minimumDistance;
+
+            if (star.type === "moon") {
+                minimumDistance = star.radius * 3.8 + 12;
+            } else if (star.type === "major") {
+                minimumDistance = star.radius * 2.8 + 12;
+            } else {
+                minimumDistance = star.radius + radius + 8;
+            }
+
+            return d < minimumDistance;
         });
+
+        if (overlaps) continue;
+
+        stars.push({
+            id: `small-${placed}`,
+            x, y,
+            radius,
+            type: "small",
+            enterRadius: radius * 2
+        });
+
+        placed++;
     }
 
     return stars;
 }
+
 
 const brushV2 = {
     base: null,
@@ -386,111 +460,111 @@ function paintStarGlowField(g, star) {
 
 
 function paintStarHaloRings(g, star) {
-  const isMoon = star.type === "moon";
-  const isMajor = star.type === "major";
+    const isMoon = star.type === "moon";
+    const isMajor = star.type === "major";
 
-  const ringCount = isMoon ? 3 : isMajor ? 2 : 1;
+    const ringCount = isMoon ? 3 : isMajor ? 2 : 1;
 
-  for (let ring = 0; ring < ringCount; ring++) {
-    const baseRadius =
-      star.radius * (1.3 + ring * 0.65);
+    for (let ring = 0; ring < ringCount; ring++) {
+        const baseRadius =
+            star.radius * (1.3 + ring * 0.65);
 
-    const count = isMoon
-      ? 22 + ring * 3
-      : isMajor ? 16 + ring * 3 : 8;
+        const count = isMoon
+            ? 22 + ring * 3
+            : isMajor ? 16 + ring * 3 : 8;
 
-    for (let i = 0; i < count; i++) {
-      // Leave irregular gaps between brush marks
-      if (random() < (ring === 0 ? 0.15 : 0.35)) {
-        continue;
-      }
+        for (let i = 0; i < count; i++) {
+            // Leave irregular gaps between brush marks
+            if (random() < (ring === 0 ? 0.15 : 0.35)) {
+                continue;
+            }
 
-      const theta =
-        (i / count) * TWO_PI + random(-0.18, 0.18);
+            const theta =
+                (i / count) * TWO_PI + random(-0.18, 0.18);
 
-      // Break up the perfect circular outline
-      const radius =
-        baseRadius + random(-0.25, 0.25) * star.radius;
+            // Break up the perfect circular outline
+            const radius =
+                baseRadius + random(-0.25, 0.25) * star.radius;
 
-      const px = star.x + cos(theta) * radius;
-      const py = star.y + sin(theta) * radius;
+            const px = star.x + cos(theta) * radius;
+            const py = star.y + sin(theta) * radius;
 
-      const tangent =
-        theta + HALF_PI + random(-0.35, 0.35);
+            const tangent =
+                theta + HALF_PI + random(-0.35, 0.35);
 
-      const len = isMoon
-        ? random(9, 18)
-        : isMajor ? random(7, 14) : random(3, 7);
+            const len = isMoon
+                ? random(9, 18)
+                : isMajor ? random(7, 14) : random(3, 7);
 
-      const weight = isMoon
-        ? random(2.8, 5)
-        : isMajor ? random(2, 3.8) : random(1.2, 2);
+            const weight = isMoon
+                ? random(2.8, 5)
+                : isMajor ? random(2, 3.8) : random(1.2, 2);
 
-      // Warm inner marks, cooler outer marks
-      let colour;
+            // Warm inner marks, cooler outer marks
+            let colour;
 
-      if (ring === 0) {
-        colour = STAR_BRUSH_COLORS.warm;
-      } else if (random() < 0.35) {
-        colour = [140, 181, 205];
-      } else {
-        colour = STAR_BRUSH_COLORS.glow;
-      }
+            if (ring === 0) {
+                colour = STAR_BRUSH_COLORS.warm;
+            } else if (random() < 0.35) {
+                colour = [140, 181, 205];
+            } else {
+                colour = STAR_BRUSH_COLORS.glow;
+            }
 
-      const alpha = ring === 0
-        ? random(140, 210)
-        : random(60, 140);
+            const alpha = ring === 0
+                ? random(140, 210)
+                : random(60, 140);
 
-      paintV2Stroke(
-        g, px, py, tangent,
-        len, weight, colour, alpha
-      );
+            paintV2Stroke(
+                g, px, py, tangent,
+                len, weight, colour, alpha
+            );
+        }
     }
-  }
 }
 
 
 
 function paintStarCore(g, star) {
-  const isMoon = star.type === "moon";
-  const isMajor = star.type === "major";
+    const isMoon = star.type === "moon";
+    const isMajor = star.type === "major";
 
-  const count = isMoon ? 190 : isMajor ? 90 : 25;
+    const count = isMoon ? 190 : isMajor ? 90 : 25;
 
-  for (let i = 0; i < count; i++) {
-    const theta = random(TWO_PI);
-    const ratio = sqrt(random());
-    const r = ratio * star.radius;
+    for (let i = 0; i < count; i++) {
+        const theta = random(TWO_PI);
+        const ratio = sqrt(random());
+        const r = ratio * star.radius;
 
-    const px = star.x + cos(theta) * r;
-    const py = star.y + sin(theta) * r;
+        const px = star.x + cos(theta) * r;
+        const py = star.y + sin(theta) * r;
 
-    // Mostly follow the circular paint direction
-    const angle =
-      theta + HALF_PI + random(-0.45, 0.45);
+        // Mostly follow the circular paint direction
+        const angle =
+            theta + HALF_PI + random(-0.45, 0.45);
 
-    const len = isMoon
-      ? random(6, 12)
-      : isMajor ? random(5, 10) : random(3, 6);
+        const len = isMoon
+            ? random(6, 12)
+            : isMajor ? random(5, 10) : random(3, 6);
 
-    const weight = isMoon
-      ? random(3, 5.5)
-      : isMajor ? random(2.5, 4.5) : random(1.5, 2.8);
+        const weight = isMoon
+            ? random(3, 5.5)
+            : isMajor ? random(2.5, 4.5) : random(1.5, 2.8);
 
-    // Bright centre, warmer outer edges
-    const colour = ratio < 0.55
-      ? STAR_BRUSH_COLORS.core
-      : random() < 0.65
-        ? STAR_BRUSH_COLORS.warm
-        : STAR_BRUSH_COLORS.glow;
+        // Bright centre, warmer outer edges
+        const colour = ratio < 0.55
+            ? STAR_BRUSH_COLORS.core
+            : random() < 0.65
+                ? STAR_BRUSH_COLORS.warm
+                : STAR_BRUSH_COLORS.glow;
 
-    const alpha = map(ratio, 0, 1, 240, 145);
+        const alpha = map(ratio, 0, 1, 240, 145);
 
-    paintV2Stroke(
-      g, px, py, angle,
-      len, weight, colour, alpha
-    );
-  }
+        paintV2Stroke(
+            g, px, py, angle,
+            len, weight, colour, alpha
+        );
+    }
 }
 
 

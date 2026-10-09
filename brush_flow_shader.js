@@ -1,6 +1,6 @@
 
 const brushFlowSettings = {
-    strength: 9,       // Displacement in pixels
+    strength: 5,       // Displacement in pixels
     speed: 1.2,        // Animation speed
     paused: false,
     enabled: true
