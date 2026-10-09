@@ -6,24 +6,24 @@ const brushFlowSettings = {
 
     // Cursor interaction
     cursorEnabled: true,
-    cursorRadius: 95,
-    cursorStrength: 3.5
+    cursorRadius: 78,
+    cursorStrength: 5.5
 };
-
 
 let brushFlowBuffer = null;
 let brushFlowProgram = null;
 let brushFlowMap = null;
 let brushFlowTime = 0;
 
-
 const brushCursor = {
     inside: false,
     wasInside: false,
     x: -1000,
     y: -1000,
-    active: 0,
-    motion: 0
+    vx: 0,
+    vy: 0,
+    speed: 0,
+    active: 0
 };
 
 function updateBrushCursor() {
@@ -33,42 +33,38 @@ function updateBrushCursor() {
         mouseY >= 0 && mouseY <= height;
 
     if (inside) {
-        // Avoid a jump when the cursor enters the canvas
         if (!brushCursor.wasInside) {
             brushCursor.x = mouseX;
             brushCursor.y = mouseY;
-            brushCursor.motion = 0;
+            brushCursor.vx = 0;
+            brushCursor.vy = 0;
+            brushCursor.speed = 0;
         }
 
         const oldX = brushCursor.x;
         const oldY = brushCursor.y;
 
         // Smooth cursor following
-        brushCursor.x = lerp(
-            brushCursor.x, mouseX, 0.25
-        );
-        brushCursor.y = lerp(
-            brushCursor.y, mouseY, 0.25
-        );
+        brushCursor.x = lerp(brushCursor.x, mouseX, 0.28);
+        brushCursor.y = lerp(brushCursor.y, mouseY, 0.28);
 
-        // Movement increases the disturbance slightly
-        const movement = Math.hypot(
-            brushCursor.x - oldX,
-            brushCursor.y - oldY
-        );
+        const dx = brushCursor.x - oldX;
+        const dy = brushCursor.y - oldY;
 
-        brushCursor.motion = lerp(
-            brushCursor.motion,
-            constrain(movement / 9, 0, 1),
+        brushCursor.vx = lerp(brushCursor.vx, dx, 0.25);
+        brushCursor.vy = lerp(brushCursor.vy, dy, 0.25);
+
+        brushCursor.speed = lerp(
+            brushCursor.speed,
+            constrain(Math.hypot(dx, dy) / 8, 0, 1),
             0.18
         );
     } else {
-        brushCursor.motion = lerp(
-            brushCursor.motion, 0, 0.15
-        );
+        brushCursor.vx = lerp(brushCursor.vx, 0, 0.14);
+        brushCursor.vy = lerp(brushCursor.vy, 0, 0.14);
+        brushCursor.speed = lerp(brushCursor.speed, 0, 0.14);
     }
 
-    // Fade the disturbance in and out
     brushCursor.active = lerp(
         brushCursor.active,
         inside ? 1 : 0,
@@ -119,7 +115,8 @@ uniform vec2 u_cursor;
 uniform float u_cursorRadius;
 uniform float u_cursorStrength;
 uniform float u_cursorActive;
-uniform float u_cursorMotion;
+uniform vec2 u_cursorVelocity;
+uniform float u_cursorSpeed;
 
 
 void main() {
@@ -153,44 +150,58 @@ void main() {
 
   // Distance from the cursor in canvas pixels
   vec2 cursorDelta = pixelPosition - u_cursor;
+  float distanceSquared = dot(cursorDelta, cursorDelta);
 
-  float distanceSquared =
-    dot(cursorDelta, cursorDelta);
-
-  // Soft local falloff, not a circular ripple
+  // Soft local falloff
   float cursorInfluence = exp(
     -0.5 * distanceSquared /
     (u_cursorRadius * u_cursorRadius)
   );
 
-  // Animate along the existing flow direction
-  float cursorPhase =
-    dot(pixelPosition / 42.0, direction) * 1.2
-    - u_time * u_speed * 1.7;
+  // Use cursor movement direction instead of sinusoidal waves
+  vec2 cursorVelocity = u_cursorVelocity;
+  float velocityLength = length(cursorVelocity);
 
-  float cursorWave = sin(cursorPhase);
+  vec2 cursorDir;
+  if (velocityLength > 0.0001) {
+    cursorDir = cursorVelocity / velocityLength;
+  } else {
+    cursorDir = direction;
+  }
 
-  // Stronger while moving, subtle while stationary
-  float motionStrength =
-    0.4 + 0.6 * u_cursorMotion;
+  // Radial vector from cursor to current pixel
+  vec2 radial = vec2(0.0);
+  if (distanceSquared > 0.0001) {
+    radial = cursorDelta / sqrt(distanceSquared);
+  }
 
+  // Slight swirl around the cursor, but no ripple
+  vec2 swirl = vec2(-radial.y, radial.x);
+
+  // Stronger when moving, still slightly alive when stationary
   float cursorAmount =
-    cursorWave *
     u_cursorStrength *
-    motionStrength *
     cursorInfluence *
     u_cursorActive *
-    localStrength;
+    localStrength *
+    (0.25 + 0.75 * u_cursorSpeed);
 
-  // Slight sideways bending
-  vec2 sideways = vec2(
-    -direction.y,
-    direction.x
-  );
+  // Blend local flow, cursor direction and a tiny swirl
+  vec2 combinedDir =
+    direction * 0.72 +
+    cursorDir * 0.22 +
+    swirl * 0.10;
 
-  vec2 cursorOffset =
-    (direction * 0.85 + sideways * 0.15)
-    * cursorAmount;
+  float combinedLen = length(combinedDir);
+  if (combinedLen > 0.0001) {
+    combinedDir /= combinedLen;
+  } else {
+    combinedDir = direction;
+  }
+
+  vec2 cursorOffset = combinedDir * cursorAmount;
+
+
 
   // Combine global flow and local cursor influence
   vec2 displacedUV = uv -
@@ -383,10 +394,14 @@ function drawBrushFlowShader() {
     );
 
     brushFlowProgram.setUniform(
-        "u_cursorMotion",
-        brushCursor.motion
+        "u_cursorVelocity",
+        [brushCursor.vx, brushCursor.vy]
     );
 
+    brushFlowProgram.setUniform(
+        "u_cursorSpeed",
+        brushCursor.speed
+    );
 
     brushFlowBuffer.clear();
     brushFlowBuffer.plane(width, height);
