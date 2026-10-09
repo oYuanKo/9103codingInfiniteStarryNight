@@ -5,12 +5,17 @@ const BRUSH_V2_SETTINGS = {
     movingCount: 650,
     noiseScale: 0.005,
 
-    // Continuous flow settings
-    flowSegments: 5,
-    flowStep: 10,
+    // Motion
     driftAmountX: 16,
     driftAmountY: 12,
-    motionAlpha: 165
+    motionAlpha: 165,
+
+    // Star composition
+    majorStarCount: 7,
+    smallStarCount: 18,
+    moonRadius: 28,
+    starMinRadius: 10,
+    starMaxRadius: 18
 };
 
 const BRUSH_V2_COLORS = [
@@ -22,10 +27,58 @@ const BRUSH_V2_COLORS = [
     [116, 166, 204]
 ];
 
+const STAR_BRUSH_COLORS = {
+    glow: [245, 210, 115],
+    warm: [255, 228, 150],
+    core: [255, 244, 205],
+    pale: [255, 235, 170]
+};
+
+function generateBrushV2Stars() {
+    const stars = [];
+
+    // One larger moon / dominant star
+    stars.push({
+        x: width * 0.83,
+        y: height * 0.17,
+        radius: BRUSH_V2_SETTINGS.moonRadius,
+        type: "moon",
+        enterRadius: BRUSH_V2_SETTINGS.moonRadius * 1.8
+    });
+
+    // Main stars, mostly in the upper sky
+    for (let i = 0; i < BRUSH_V2_SETTINGS.majorStarCount; i++) {
+        stars.push({
+            x: random(width * 0.08, width * 0.92),
+            y: random(height * 0.08, height * 0.46),
+            radius: random(
+                BRUSH_V2_SETTINGS.starMinRadius,
+                BRUSH_V2_SETTINGS.starMaxRadius
+            ),
+            type: "major",
+            enterRadius: random(22, 34)
+        });
+    }
+
+    // Smaller stars for support
+    for (let i = 0; i < BRUSH_V2_SETTINGS.smallStarCount; i++) {
+        stars.push({
+            x: random(width * 0.05, width * 0.95),
+            y: random(height * 0.06, height * 0.55),
+            radius: random(3, 6),
+            type: "small",
+            enterRadius: 10
+        });
+    }
+
+    return stars;
+}
+
 const brushV2 = {
     base: null,
     motion: null,
     marks: [],
+    stars: [],
     time: 0
 };
 
@@ -158,6 +211,7 @@ function initBrushV2(seed) {
 
     brushV2.time = 0;
     brushV2.marks = [];
+    brushV2.stars = [];
 
     // Pass 1: dense coverage
     const step = BRUSH_V2_SETTINGS.spacing;
@@ -199,6 +253,9 @@ function initBrushV2(seed) {
             random(110, 190)
         );
     }
+
+    brushV2.stars = generateBrushV2Stars();
+    paintAllBrushV2Stars(brushV2.base);
 
     // Living brush marks keep stable home positions
     for (let i = 0; i < BRUSH_V2_SETTINGS.movingCount; i++) {
@@ -279,4 +336,168 @@ function drawBrushV2() {
 
 
     image(layer, 0, 0);
+}
+
+function paintStarGlowField(g, star) {
+    const glowRadius =
+        star.type === "moon"
+            ? star.radius * 3.8
+            : star.radius * 3.0;
+
+    const count =
+        star.type === "moon"
+            ? 220
+            : star.type === "major"
+                ? 140
+                : 45;
+
+    for (let i = 0; i < count; i++) {
+        const angle = random(TWO_PI);
+        const distRatio = sqrt(random());
+        const r = distRatio * glowRadius;
+
+        const px = star.x + cos(angle) * r;
+        const py = star.y + sin(angle) * r;
+
+        const localAngle =
+            brushV2Angle(px, py, 0) + random(-0.3, 0.3);
+
+        const alpha =
+            map(distRatio, 0, 1, 70, 8);
+
+        const colour = [
+            STAR_BRUSH_COLORS.glow[0] + random(-8, 8),
+            STAR_BRUSH_COLORS.glow[1] + random(-8, 8),
+            STAR_BRUSH_COLORS.glow[2] + random(-8, 8)
+        ];
+
+        paintV2Stroke(
+            g,
+            px,
+            py,
+            localAngle,
+            random(8, 18),
+            random(1.2, 2.6),
+            colour,
+            alpha
+        );
+    }
+}
+
+function paintStarHaloRings(g, star) {
+    const ringCount =
+        star.type === "moon" ? 4 :
+            star.type === "major" ? 3 : 1;
+
+    for (let ring = 0; ring < ringCount; ring++) {
+        const baseRadius =
+            star.radius * (1.35 + ring * 0.48);
+
+        const strokeCount =
+            star.type === "moon"
+                ? 34 - ring * 4
+                : star.type === "major"
+                    ? 24 - ring * 3
+                    : 10;
+
+        for (let i = 0; i < strokeCount; i++) {
+            const theta =
+                (i / strokeCount) * TWO_PI +
+                random(-0.08, 0.08);
+
+            const px = star.x + cos(theta) * baseRadius;
+            const py = star.y + sin(theta) * baseRadius;
+
+            // Tangential direction around the star
+            const tangent = theta + HALF_PI + random(-0.22, 0.22);
+
+            const len =
+                star.type === "moon"
+                    ? random(14, 24)
+                    : random(10, 18);
+
+            const weight =
+                star.type === "moon"
+                    ? random(1.8, 3.2)
+                    : random(1.2, 2.4);
+
+            const alpha =
+                map(ring, 0, ringCount - 1, 135, 60);
+
+            const colour =
+                ring === 0
+                    ? STAR_BRUSH_COLORS.warm
+                    : STAR_BRUSH_COLORS.pale;
+
+            paintV2Stroke(
+                g,
+                px,
+                py,
+                tangent,
+                len,
+                weight,
+                colour,
+                alpha
+            );
+        }
+    }
+}
+
+function paintStarCore(g, star) {
+    const coreCount =
+        star.type === "moon"
+            ? 90
+            : star.type === "major"
+                ? 55
+                : 18;
+
+    for (let i = 0; i < coreCount; i++) {
+        const angle = random(TWO_PI);
+        const r = sqrt(random()) * star.radius;
+
+        const px = star.x + cos(angle) * r;
+        const py = star.y + sin(angle) * r;
+
+        const dir = random(TWO_PI);
+
+        const len =
+            star.type === "moon"
+                ? random(6, 12)
+                : random(4, 9);
+
+        const weight =
+            star.type === "moon"
+                ? random(1.8, 3.4)
+                : random(1.1, 2.4);
+
+        const colour =
+            random() < 0.7
+                ? STAR_BRUSH_COLORS.core
+                : STAR_BRUSH_COLORS.warm;
+
+        paintV2Stroke(
+            g,
+            px,
+            py,
+            dir,
+            len,
+            weight,
+            colour,
+            random(150, 235)
+        );
+    }
+}
+
+function paintAllBrushV2Stars(g) {
+    for (const star of brushV2.stars) {
+        paintStarGlowField(g, star);
+    }
+
+    for (const star of brushV2.stars) {
+        paintStarHaloRings(g, star);
+    }
+
+    for (const star of brushV2.stars) {
+        paintStarCore(g, star);
+    }
 }
