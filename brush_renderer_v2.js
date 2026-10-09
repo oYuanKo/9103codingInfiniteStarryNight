@@ -330,6 +330,7 @@ function initBrushV2(seed) {
 
     brushV2.stars = generateBrushV2Stars();
     paintAllBrushV2Stars(brushV2.base);
+    paintBrushMountains(brushV2.base);
 
     // Living brush marks keep stable home positions
     for (let i = 0; i < BRUSH_V2_SETTINGS.movingCount; i++) {

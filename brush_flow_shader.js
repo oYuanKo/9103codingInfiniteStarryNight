@@ -167,6 +167,12 @@ function rebuildBrushFlowMap() {
                 flowWeight = Math.min(flowWeight, localWeight);
             }
 
+            // Reduce movement in the mountain regions
+            flowWeight = Math.min(
+                flowWeight,
+                getMountainFlowWeight(px, py)
+            );
+
             brushFlowMap.pixels[index + 2] =
                 Math.round(flowWeight * 255);
 
