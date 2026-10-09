@@ -19,8 +19,8 @@ Users can explore different layers of the artwork by zooming in, moving from the
 | Member / Branch | Main Responsibility |
 |---|---|
 | Yuan / `yuan` | Perlin Noise & Randomness + User Input (Zoom & Navigation) |
-| Member 2 / `audio` | Audio-based Interactions |
-| Member 3 / `time-based` | Time-based Effects & Transitions |
+| Qingyang Fang / `audio` | Audio-based Interactions |
+| Yang Wu / `time-based` | Time-based Effects & Transitions |
 
 ## GitHub 使用指南
 
