@@ -153,6 +153,7 @@ const brushV2 = {
     motion: null,
     marks: [],
     stars: [],
+    village: null,
     time: 0
 };
 
@@ -286,6 +287,7 @@ function initBrushV2(seed) {
     brushV2.time = 0;
     brushV2.marks = [];
     brushV2.stars = [];
+    brushV2.village = null;
 
     // Pass 1: dense coverage
     const step = BRUSH_V2_SETTINGS.spacing;
@@ -331,6 +333,10 @@ function initBrushV2(seed) {
     brushV2.stars = generateBrushV2Stars();
     paintAllBrushV2Stars(brushV2.base);
     paintBrushMountains(brushV2.base);
+
+    brushV2.village = generateVillageLayout();
+    paintBrushVillage(brushV2.base);
+    
 
     // Living brush marks keep stable home positions
     for (let i = 0; i < BRUSH_V2_SETTINGS.movingCount; i++) {

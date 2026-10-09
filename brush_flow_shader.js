@@ -172,6 +172,11 @@ function rebuildBrushFlowMap() {
                 flowWeight,
                 getMountainFlowWeight(px, py)
             );
+            
+            flowWeight = Math.min(
+                flowWeight,
+                getVillageFlowWeight(px, py)
+            );
 
             brushFlowMap.pixels[index + 2] =
                 Math.round(flowWeight * 255);
