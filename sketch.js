@@ -361,6 +361,10 @@ function loadTestUniverse(seed) {
   universeSeed = seed;
 
   generateUniverse(universeSeed);
+
+  inputMechanic.reset();
+  enteringStar = null;
+
   changeState(STATES.NIGHT);
 }
 

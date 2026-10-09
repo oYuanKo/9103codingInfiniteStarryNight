@@ -218,16 +218,6 @@ function createFlowField() {
     console.log("Flow field created:", flowField.length);
 }
 
-function getFlowAngle(x, y, z = 0) {
-    const noiseValue = noise(
-        x * debugParams.noiseScale,
-        y * debugParams.noiseScale,
-        z
-    );
-
-    return noiseValue * TWO_PI * 2;
-}
-
 
 function displayFlowField() {
     if (!worldPalette) return;
