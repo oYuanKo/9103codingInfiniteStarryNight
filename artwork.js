@@ -439,34 +439,55 @@ function getVillageFlowWeight(x, y) {
 }
 
 const CYPRESS_PALETTE = {
-    dark: [18, 28, 44],
-    mid: [28, 43, 62],
-    blueGreen: [38, 58, 72],
-    accent: [58, 82, 98],
-    highlight: [92, 110, 122]
+    dark: [16, 24, 38],
+    deep: [22, 34, 50],
+    mid: [34, 52, 70],
+    blueGreen: [44, 66, 78],
+    accent: [68, 94, 104],
+    highlight: [92, 118, 126]
 };
 
 function generateCypressLayout() {
-    const baseX = width * 0.18;
-    const baseY = height * 0.88;
-
     return {
-        baseX,
-        baseY,
-        height: height * 0.42,
-        width: width * 0.12
+        // Push it further left so part of it is cropped by the frame
+        baseX: width * 0.105,
+        baseY: height * 0.93,
+
+        // Taller and narrower than before
+        height: height * 0.56,
+        width: width * 0.085
     };
 }
 
-function cypressRadiusAtY(layout, yNorm) {
-    // yNorm: 0 at bottom, 1 at top
-    const taper = sin(yNorm * PI) * 0.72 + 0.18;
+// A more flame-like silhouette profile:
+// wide around lower-middle, slimmer at top, uneven edges
+function cypressHalfWidth(layout, t) {
+    // t: 0 at bottom, 1 at top
 
-    const bumps =
-        sin(yNorm * 7.5 + 0.6) * 0.08 +
-        sin(yNorm * 15.0 + 1.2) * 0.04;
+    const lowerBulge =
+        0.58 * Math.exp(-Math.pow((t - 0.22) / 0.20, 2));
 
-    return layout.width * (taper + bumps);
+    const midBulge =
+        0.34 * Math.exp(-Math.pow((t - 0.52) / 0.17, 2));
+
+    const upperBulge =
+        0.16 * Math.exp(-Math.pow((t - 0.76) / 0.10, 2));
+
+    const base = 0.12;
+
+    let profile = base + lowerBulge + midBulge + upperBulge;
+
+    // Strong taper toward the top
+    profile *= lerp(1.05, 0.20, Math.pow(t, 1.25));
+
+    return layout.width * profile;
+}
+
+function cypressCenterX(layout, t) {
+    // gentle sideways movement so it doesn't feel like a rigid cone
+    return layout.baseX
+        + Math.sin(t * 3.8 + 0.4) * layout.width * 0.10
+        - Math.sin(t * 7.5 + 1.2) * layout.width * 0.04;
 }
 
 function pointInCypress(px, py, layout) {
@@ -474,17 +495,11 @@ function pointInCypress(px, py, layout) {
 
     if (py < topY || py > layout.baseY) return false;
 
-    const yNorm = 1 - (layout.baseY - py) / layout.height;
+    const t = 1 - (layout.baseY - py) / layout.height; // 0 bottom, 1 top
+    const halfWidth = cypressHalfWidth(layout, t);
+    const cx = cypressCenterX(layout, t);
 
-    const radius = cypressRadiusAtY(layout, yNorm);
-
-    // slight sideways sway for a more organic silhouette
-    const centreOffset =
-        sin(yNorm * 4.6 + 0.4) * layout.width * 0.08;
-
-    const cx = layout.baseX + centreOffset;
-
-    return abs(px - cx) <= radius;
+    return Math.abs(px - cx) <= halfWidth;
 }
 
 function paintBrushCypress(g) {
@@ -493,34 +508,36 @@ function paintBrushCypress(g) {
     const layout = brushV2.cypress;
     const topY = layout.baseY - layout.height;
 
-    // Main dense body
-    for (let y = topY; y < layout.baseY; y += 6) {
-        for (let x = layout.baseX - layout.width - 8;
-            x < layout.baseX + layout.width + 8;
-            x += 6) {
-
-            const px = x + random(-2, 2);
-            const py = y + random(-2, 2);
+    // ------------------------------------------------------------------
+    // PASS 1: Main dense body
+    // ------------------------------------------------------------------
+    for (let y = topY; y < layout.baseY; y += 5) {
+        for (
+            let x = layout.baseX - layout.width - 14;
+            x < layout.baseX + layout.width + 14;
+            x += 5
+        ) {
+            const px = x + random(-1.8, 1.8);
+            const py = y + random(-1.8, 1.8);
 
             if (!pointInCypress(px, py, layout)) continue;
 
-            const yNorm = 1 - (layout.baseY - py) / layout.height;
+            const t = 1 - (layout.baseY - py) / layout.height;
 
-            // Upward flame-like direction
+            // Mostly upward, with small curvature
             let angle =
-                -HALF_PI +
-                sin(yNorm * 7.5 + px * 0.02) * 0.38 +
-                random(-0.18, 0.18);
-
-            // Slight outward sweep near edges
-            const dx = px - layout.baseX;
-            angle += map(dx, -layout.width, layout.width, -0.22, 0.22);
+                -HALF_PI
+                + Math.sin(t * 9.0 + px * 0.022) * 0.22
+                + map(px - layout.baseX, -layout.width, layout.width, -0.10, 0.10)
+                + random(-0.12, 0.12);
 
             let colour;
 
-            if (random() < 0.55) colour = CYPRESS_PALETTE.dark;
-            else if (random() < 0.75) colour = CYPRESS_PALETTE.mid;
-            else if (random() < 0.9) colour = CYPRESS_PALETTE.blueGreen;
+            const r = random();
+            if (r < 0.36) colour = CYPRESS_PALETTE.dark;
+            else if (r < 0.60) colour = CYPRESS_PALETTE.deep;
+            else if (r < 0.82) colour = CYPRESS_PALETTE.mid;
+            else if (r < 0.94) colour = CYPRESS_PALETTE.blueGreen;
             else colour = CYPRESS_PALETTE.accent;
 
             paintV2Stroke(
@@ -528,68 +545,113 @@ function paintBrushCypress(g) {
                 px,
                 py,
                 angle,
-                random(10, 22),
-                random(3.2, 6.2),
+                random(10, 20),
+                random(2.8, 5.0),
                 colour,
-                random(150, 235)
+                random(145, 225)
             );
         }
     }
 
-    // Interior directional accents
-    for (let i = 0; i < 320; i++) {
+    // ------------------------------------------------------------------
+    // PASS 2: Vertical flame accents inside
+    // ------------------------------------------------------------------
+    for (let i = 0; i < 360; i++) {
         const px = random(layout.baseX - layout.width, layout.baseX + layout.width);
         const py = random(topY, layout.baseY);
 
         if (!pointInCypress(px, py, layout)) continue;
 
-        const yNorm = 1 - (layout.baseY - py) / layout.height;
+        const t = 1 - (layout.baseY - py) / layout.height;
 
         const angle =
-            -HALF_PI +
-            sin(yNorm * 8.5 + py * 0.01) * 0.45 +
-            random(-0.22, 0.22);
+            -HALF_PI
+            + Math.sin(t * 8.5 + py * 0.012) * 0.28
+            + random(-0.10, 0.10);
 
-        const colour =
-            random() < 0.7
-                ? CYPRESS_PALETTE.mid
-                : random() < 0.75
-                    ? CYPRESS_PALETTE.highlight
-                    : CYPRESS_PALETTE.blueGreen;
+        let colour;
+        const r = random();
+        if (r < 0.58) colour = CYPRESS_PALETTE.mid;
+        else if (r < 0.80) colour = CYPRESS_PALETTE.blueGreen;
+        else if (r < 0.93) colour = CYPRESS_PALETTE.highlight;
+        else colour = CYPRESS_PALETTE.accent;
 
         paintV2Stroke(
             g,
             px,
             py,
             angle,
-            random(7, 14),
-            random(1.4, 3.2),
+            random(8, 16),
+            random(1.2, 2.8),
             colour,
-            random(90, 170)
+            random(90, 165)
         );
     }
 
-    // Dark outer silhouette reinforcement
-    for (let i = 0; i < 180; i++) {
-        const y = random(topY, layout.baseY);
-        const yNorm = 1 - (layout.baseY - y) / layout.height;
+    // ------------------------------------------------------------------
+    // PASS 3: Ragged edge silhouette
+    // Make the edges feel branchy, not like a smooth potato
+    // ------------------------------------------------------------------
+    for (let i = 0; i < 220; i++) {
+        const t = random();
+        const y = lerp(topY, layout.baseY, t);
 
-        const radius = cypressRadiusAtY(layout, yNorm);
-        const cx = layout.baseX + sin(yNorm * 4.6 + 0.4) * layout.width * 0.08;
+        const halfWidth = cypressHalfWidth(layout, t);
+        const cx = cypressCenterX(layout, t);
 
         const side = random() < 0.5 ? -1 : 1;
-        const px = cx + side * radius + random(-2, 2);
-        const py = y + random(-2, 2);
+
+        const px = cx + side * halfWidth + random(-2.5, 2.5);
+        const py = y + random(-2.5, 2.5);
+
+        // Edge strokes flick slightly outward and upward
+        const angle =
+            -HALF_PI
+            + side * random(0.10, 0.28)
+            + random(-0.10, 0.10);
+
+        const colour =
+            random() < 0.72
+                ? CYPRESS_PALETTE.dark
+                : CYPRESS_PALETTE.deep;
 
         paintV2Stroke(
             g,
             px,
             py,
-            -HALF_PI + random(-0.3, 0.3),
-            random(8, 16),
-            random(1.8, 3.6),
-            CYPRESS_PALETTE.dark,
-            random(120, 200)
+            angle,
+            random(8, 15),
+            random(1.6, 3.4),
+            colour,
+            random(120, 195)
+        );
+    }
+
+    // ------------------------------------------------------------------
+    // PASS 4: Tapered top plume
+    // Helps the top feel pointed and flame-like
+    // ------------------------------------------------------------------
+    for (let i = 0; i < 110; i++) {
+        const px = random(layout.baseX - layout.width * 0.28, layout.baseX + layout.width * 0.28);
+        const py = random(topY - layout.height * 0.05, topY + layout.height * 0.16);
+
+        const angle =
+            -HALF_PI + random(-0.14, 0.14);
+
+        const colour =
+            random() < 0.55
+                ? CYPRESS_PALETTE.deep
+                : CYPRESS_PALETTE.mid;
+
+        paintV2Stroke(
+            g,
+            px,
+            py,
+            angle,
+            random(8, 18),
+            random(1.5, 3.2),
+            colour,
+            random(110, 175)
         );
     }
 }
@@ -598,7 +660,8 @@ function getCypressFlowWeight(x, y) {
     if (!brushV2.cypress) return 1.0;
 
     if (pointInCypress(x, y, brushV2.cypress)) {
-        return 0.14;
+        // keep it mostly stable but not totally frozen
+        return 0.11;
     }
 
     return 1.0;
