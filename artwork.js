@@ -157,18 +157,18 @@ function getMountainFlowWeight(x, y) {
 
 const VILLAGE_PALETTE = {
     wall: [
-        [160, 180, 210],
-        [135, 155, 188],
-        [118, 138, 170]
+        [118, 134, 160],
+        [102, 118, 145],
+        [90, 108, 136]
     ],
     roof: [
-        [70, 86, 118],
-        [56, 70, 98],
-        [82, 96, 128]
+        [64, 76, 102],
+        [54, 66, 92],
+        [74, 88, 116]
     ],
-    shadow: [45, 56, 82],
-    highlight: [210, 220, 235],
-    steeple: [35, 45, 68]
+    shadow: [42, 52, 76],
+    highlight: [165, 180, 198],
+    steeple: [34, 44, 64]
 };
 
 function pointInTriangle(px, py, ax, ay, bx, by, cx, cy) {
@@ -203,7 +203,7 @@ function generateVillageLayout() {
 
         // Put the village in front of the far ridge
         const baseY =
-            mountainRidgeY(x, 0) + random(24, 36);
+            mountainRidgeY(x, 0) + random(22, 34);
 
         houses.push({
             x,
@@ -213,7 +213,7 @@ function generateVillageLayout() {
             roofH: random(6, 11)
         });
 
-        x += w + random(4, 10);
+        x += w + random(5, 12);
     }
 
     const steepleX = width * 0.43 + random(-10, 10);
@@ -236,7 +236,7 @@ function paintVillageHouseBody(g, house) {
     const right = house.x + house.w / 2;
     const top = house.baseY - house.h;
 
-    const strokeCount = Math.floor(house.w * house.h * 0.22);
+    const strokeCount = Math.floor(house.w * house.h * 0.18);
 
     for (let i = 0; i < strokeCount; i++) {
         const px = random(left, right);
@@ -256,7 +256,7 @@ function paintVillageHouseBody(g, house) {
             random(4, 9),
             random(1.2, 2.4),
             colour,
-            random(150, 230)
+            random(105, 175)
         );
     }
 
@@ -270,7 +270,7 @@ function paintVillageHouseBody(g, house) {
             random(5, 10),
             random(1.2, 2),
             VILLAGE_PALETTE.shadow,
-            random(120, 190)
+            random(85, 145)
         );
     }
 }
@@ -304,7 +304,7 @@ function paintVillageHouseRoof(g, house) {
             random(4, 8),
             random(1, 2.2),
             colour,
-            random(130, 210)
+            random(95, 165)
         );
     }
 }
@@ -329,7 +329,7 @@ function paintVillageSteeple(g, steeple) {
             random() < 0.75
                 ? VILLAGE_PALETTE.steeple
                 : VILLAGE_PALETTE.wall[0],
-            random(145, 220)
+            random(110, 180)
         );
     }
 
@@ -357,7 +357,54 @@ function paintVillageSteeple(g, steeple) {
             random(4, 9),
             random(1.2, 2.3),
             VILLAGE_PALETTE.steeple,
-            random(150, 220)
+            random(115, 185)
+        );
+    }
+}
+
+function paintVillageBlendBand(g) {
+    // A soft blue-grey band that helps merge
+    // the village into the mountain foreground
+    for (let i = 0; i < 260; i++) {
+        const x = random(width * 0.04, width * 0.82);
+        const ridgeY = mountainRidgeY(x, 0);
+
+        const y = ridgeY + random(14, 36);
+
+        const colour = random([
+            [88, 108, 138],
+            [78, 98, 128],
+            [68, 88, 118]
+        ]);
+
+        paintV2Stroke(
+            g,
+            x,
+            y,
+            random(-0.10, 0.10),
+            random(10, 24),
+            random(2.0, 4.0),
+            colour,
+            random(28, 70)
+        );
+    }
+
+    // Subtle darker grounding marks
+    for (let i = 0; i < 140; i++) {
+        const x = random(width * 0.06, width * 0.80);
+        const ridgeY = mountainRidgeY(x, 0);
+
+        const y = ridgeY + random(22, 42);
+
+        paintV2Stroke(
+            g,
+            x,
+            y,
+            random(-0.08, 0.08),
+            random(7, 16),
+            random(1.2, 2.4),
+            [58, 72, 100],
+            random(25, 60)
         );
     }
 }
@@ -365,44 +412,49 @@ function paintVillageSteeple(g, steeple) {
 function paintBrushVillage(g) {
     if (!brushV2.village) return;
 
-    // low horizontal village band to connect houses
-    for (let i = 0; i < 220; i++) {
-        const x = random(width * 0.04, width * 0.8);
-        const y = mountainRidgeY(x, 0) + random(22, 40);
+    // First: a soft blending band to merge village into landscape
+    paintVillageBlendBand(g);
+
+    // Low horizontal village band
+    for (let i = 0; i < 120; i++) {
+        const x = random(width * 0.04, width * 0.80);
+        const y = mountainRidgeY(x, 0) + random(22, 38);
 
         paintV2Stroke(
             g,
             x,
             y,
-            random(-0.12, 0.12),
-            random(7, 16),
-            random(1.3, 2.8),
+            random(-0.10, 0.10),
+            random(7, 14),
+            random(1.1, 2.3),
             random(VILLAGE_PALETTE.wall),
-            random(70, 130)
+            random(35, 85)
         );
     }
 
+    // Houses
     for (const house of brushV2.village.houses) {
         paintVillageHouseBody(g, house);
         paintVillageHouseRoof(g, house);
     }
 
+    // Steeple
     paintVillageSteeple(g, brushV2.village.steeple);
 
-    // a few light accents
-    for (let i = 0; i < 40; i++) {
+    // Subtle highlights only
+    for (let i = 0; i < 16; i++) {
         const x = random(width * 0.06, width * 0.78);
-        const y = mountainRidgeY(x, 0) + random(20, 36);
+        const y = mountainRidgeY(x, 0) + random(20, 34);
 
         paintV2Stroke(
             g,
             x,
             y,
-            random(-0.2, 0.2),
-            random(3, 6),
-            random(0.8, 1.6),
+            random(-0.18, 0.18),
+            random(2.5, 5.5),
+            random(0.7, 1.4),
             VILLAGE_PALETTE.highlight,
-            random(90, 160)
+            random(45, 90)
         );
     }
 }
