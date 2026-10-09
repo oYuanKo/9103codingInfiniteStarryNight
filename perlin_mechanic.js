@@ -5,11 +5,9 @@ let brushStrokes = [];
 let vortices = [];
 let flowTime = 0;
 
-const BRUSH_COUNT = 600;
 const FLOW_TIME_SPEED = 0.003;
-
 const FLOW_SPACING = 20;
-const FLOW_NOISE_SCALE = 0.006;
+
 
 // Different colour palettes for different universes
 const WORLD_PALETTES = [
@@ -60,8 +58,8 @@ const BRUSH_PALETTES = [
 function getFlowAngle(x, y, z = 0) {
     // Original Perlin direction
     const noiseValue = noise(
-        x * FLOW_NOISE_SCALE,
-        y * FLOW_NOISE_SCALE,
+        x * debugParams.noiseScale,
+        y * debugParams.noiseScale,
         z
     );
 
@@ -219,8 +217,8 @@ function createFlowField() {
 
 function getFlowAngle(x, y, z = 0) {
     const noiseValue = noise(
-        x * FLOW_NOISE_SCALE,
-        y * FLOW_NOISE_SCALE,
+        x * debugParams.noiseScale,
+        y * debugParams.noiseScale,
         z
     );
 
@@ -389,7 +387,7 @@ function createBrushStrokes() {
     brushStrokes = [];
     flowTime = 0;
 
-    for (let i = 0; i < BRUSH_COUNT; i++) {
+    for (let i = 0; i < debugParams.brushCount; i++) {
         const x = random(0, width);
         const y = random(20, height * 0.72);
 
@@ -428,8 +426,8 @@ function createVortices() {
             // Main spiral near the centre of the sky
             x: width * 0.44 + random(-25, 25),
             y: height * 0.34 + random(-15, 15),
-            radius: min(width, height) * 0.39,
-            strength: 4.8,
+            radius: min(width, height) * debugParams.vortexRadius,
+            strength: debugParams.vortexStrength,
             direction: 1
         },
         {
@@ -491,4 +489,22 @@ function displayStarHalos() {
     }
 
     pop();
+}
+
+
+function resizeBrushStrokes(targetCount) {
+    targetCount = Math.floor(targetCount);
+
+    // Add new strokes when increasing count
+    while (brushStrokes.length < targetCount) {
+        const x = random(0, width);
+        const y = random(20, height * 0.72);
+
+        brushStrokes.push(new BrushStroke(x, y));
+    }
+
+    // Remove extra strokes when decreasing count
+    if (brushStrokes.length > targetCount) {
+        brushStrokes.length = targetCount;
+    }
 }

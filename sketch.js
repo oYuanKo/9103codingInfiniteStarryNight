@@ -15,6 +15,7 @@ function setup() {
   textFont("Arial");
 
   generateUniverse(universeSeed);
+  initDebugGUI();
 }
 
 function draw() {
@@ -50,7 +51,7 @@ function drawNight() {
   const dt = min(deltaTime / 16.67, 2);
 
   // Update Perlin + Vortex movement
-  updateBrushStrokes(dt);
+  updateBrushStrokes(dt, debugParams.brushSpeed);
 
   // Moving painterly brushstrokes
   displayBrushStrokes();
