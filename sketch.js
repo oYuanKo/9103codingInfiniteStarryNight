@@ -1,4 +1,14 @@
 const SPACE_BG = [3, 6, 20];
+// STAR transition
+let enteringStar = null;
+let starEnterStart = 0;
+
+// FADE transition
+let fadeStart = 0;
+
+// Animation durations (milliseconds)
+const STAR_ENTER_DURATION = 2400;
+const FADE_DURATION = 1400;
 
 // Zoom thresholds
 const SPACE_REVEAL_START = 0.80;
@@ -50,8 +60,6 @@ function draw() {
 }
 
 // Placeholder scenes
-
-
 
 
 function drawNight() {
@@ -115,30 +123,186 @@ function drawNight() {
 }
 
 
+
 function drawSpace() {
   background(...SPACE_BG);
 
-  // Full deep-space starfield
+  // Draw deep-space stars
   displaySpaceStarField(1);
 
-  drawSceneLabel("SPACE - Deep Space");
+  // Check mouse proximity to stars
+  inputMechanic.handlePointer(
+    mouseX,
+    mouseY,
+    spaceStars
+  );
+
+  push();
+  noFill();
+
+  // Hover highlight
+  const hovered = inputMechanic.hoveredStar;
+
+  if (hovered) {
+    stroke(255, 225, 150);
+    strokeWeight(1.5);
+
+    circle(
+      hovered.x,
+      hovered.y,
+      hovered.radius * 6
+    );
+
+    noStroke();
+    fill(255);
+    textSize(13);
+    textAlign(LEFT, CENTER);
+    text("Click to enter", hovered.x + 18, hovered.y);
+  }
+
+  // Selected star highlight
+  const selected = inputMechanic.selectedStar;
+
+  if (selected) {
+    noFill();
+    stroke(255, 200, 100);
+    strokeWeight(2);
+
+    circle(
+      selected.x,
+      selected.y,
+      selected.radius * 8
+    );
+  }
+
+  pop();
+
+  drawSceneLabel("SPACE - Select a Star");
+
+  // Check if the user clicked a star
+  const request = inputMechanic.consumeEnterRequest();
+
+  if (request) {
+    beginStarTransition(request);
+  }
 }
+
+
 
 
 function drawStar() {
-  background(10, 15, 35);
+  if (!enteringStar) {
+    changeState(STATES.SPACE);
+    return;
+  }
 
-  noStroke();
-  fill(255, 210, 100);
-  circle(width / 2, height / 2, 200);
+  // Animation progress: 0 -> 1
+  const elapsed = millis() - starEnterStart;
 
-  drawSceneLabel("STAR - Approaching Star");
+  const progress = constrain(
+    elapsed / STAR_ENTER_DURATION,
+    0,
+    1
+  );
+
+  // Smooth start and finish
+  const eased =
+    progress * progress * (3 - 2 * progress);
+
+  background(...SPACE_BG);
+
+  // Zoom until the star covers the whole canvas
+  const targetZoom =
+    (Math.hypot(width, height) /
+      (enteringStar.radius * 2)) * 1.15;
+
+  // Exponential zoom feels more natural
+  const zoom = pow(targetZoom, eased);
+
+  // Move the selected star smoothly to screen centre
+  const cameraX =
+    enteringStar.x -
+    (enteringStar.x - width / 2) *
+    (1 - eased) / zoom;
+
+  const cameraY =
+    enteringStar.y -
+    (enteringStar.y - height / 2) *
+    (1 - eased) / zoom;
+
+  push();
+
+  translate(width / 2, height / 2);
+  scale(zoom);
+  translate(-cameraX, -cameraY);
+
+  // Render the same space field as before
+  displaySpaceStarField(1);
+
+  pop();
+
+  // As the star fills the screen, add warm light
+  if (progress > 0.75) {
+    const lightProgress = constrain(
+      (progress - 0.75) / 0.25,
+      0,
+      1
+    );
+
+    noStroke();
+    fill(255, 235, 185, lightProgress * 255);
+    rect(0, 0, width, height);
+  }
+
+  // Finish STAR transition
+  if (progress >= 1) {
+    beginFadeTransition();
+  }
 }
+
+
 
 function drawFade() {
-  background(245, 220, 155);
-  drawSceneLabel("FADE - Entering New Universe");
+  const elapsed = millis() - fadeStart;
+
+  const progress = constrain(
+    elapsed / FADE_DURATION,
+    0,
+    1
+  );
+
+  const eased =
+    progress * progress * (3 - 2 * progress);
+
+  // Draw the newly generated universe underneath
+  background(...worldPalette.sky);
+
+  const dt = min(deltaTime / 16.67, 2);
+
+  updateBrushStrokes(dt, debugParams.brushSpeed);
+
+  displayBrushStrokes();
+  displayStarHalos();
+  displayStarField();
+
+  // Fade the warm light away
+  noStroke();
+
+  fill(
+    255,
+    235,
+    185,
+    (1 - eased) * 255
+  );
+
+  rect(0, 0, width, height);
+
+  // Reveal the new Starry Night
+  if (progress >= 1) {
+    changeState(STATES.NIGHT);
+  }
 }
+
 
 // Helper functions
 
@@ -183,8 +347,6 @@ function startNewUniverse() {
 function keyPressed() {
   if (key === "1") changeState(STATES.NIGHT);
   if (key === "2") changeState(STATES.SPACE);
-  if (key === "3") changeState(STATES.STAR);
-  if (key === "4") changeState(STATES.FADE);
   if (key === "q" || key === "Q") loadTestUniverse(12);
   if (key === "w" || key === "W") loadTestUniverse(89);
   if (key === "e" || key === "E") loadTestUniverse(205);
@@ -244,4 +406,71 @@ function getSpaceTransitionProgress(zoom) {
 
   // Smoothstep: softer start and finish
   return t * t * (3 - 2 * t);
+}
+
+function mousePressed(event) {
+  if (currentState !== STATES.SPACE) return;
+
+  // Ignore clicks on debug GUI
+  if (
+    event.target &&
+    event.target.closest &&
+    event.target.closest("#debug-gui")
+  ) {
+    return;
+  }
+
+  // Check canvas boundaries
+  if (
+    mouseX < 0 || mouseX > width ||
+    mouseY < 0 || mouseY > height
+  ) {
+    return;
+  }
+
+  inputMechanic.handlePointer(
+    mouseX,
+    mouseY,
+    spaceStars
+  );
+
+  inputMechanic.requestEnter();
+}
+
+
+function beginStarTransition(star) {
+  if (currentState !== STATES.SPACE || !star) {
+    return;
+  }
+
+  // Save selected star information
+  enteringStar = { ...star };
+
+  // Record animation start time
+  starEnterStart = millis();
+
+  // Enter STAR state
+  changeState(STATES.STAR);
+
+  console.log("Entering star:", enteringStar);
+}
+
+
+
+function beginFadeTransition() {
+  // Prevent an invalid transition
+  if (currentState !== STATES.STAR) return;
+
+  // Generate a new universe exactly once
+  startNewUniverse();
+
+  // Clear the previous star target
+  enteringStar = null;
+
+  // Start the light-to-night transition
+  fadeStart = millis();
+
+  changeState(STATES.FADE);
+
+  console.log("Fading into new universe:", universeSeed);
 }
