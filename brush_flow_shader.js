@@ -1,15 +1,83 @@
-
 const brushFlowSettings = {
-    strength: 5,       // Displacement in pixels
-    speed: 1.2,        // Animation speed
+    strength: 5,
+    speed: 1.2,
     paused: false,
-    enabled: true
+    enabled: true,
+
+    // Cursor interaction
+    cursorEnabled: true,
+    cursorRadius: 95,
+    cursorStrength: 3.5
 };
+
 
 let brushFlowBuffer = null;
 let brushFlowProgram = null;
 let brushFlowMap = null;
 let brushFlowTime = 0;
+
+
+const brushCursor = {
+    inside: false,
+    wasInside: false,
+    x: -1000,
+    y: -1000,
+    active: 0,
+    motion: 0
+};
+
+function updateBrushCursor() {
+    const inside =
+        brushCursor.inside &&
+        mouseX >= 0 && mouseX <= width &&
+        mouseY >= 0 && mouseY <= height;
+
+    if (inside) {
+        // Avoid a jump when the cursor enters the canvas
+        if (!brushCursor.wasInside) {
+            brushCursor.x = mouseX;
+            brushCursor.y = mouseY;
+            brushCursor.motion = 0;
+        }
+
+        const oldX = brushCursor.x;
+        const oldY = brushCursor.y;
+
+        // Smooth cursor following
+        brushCursor.x = lerp(
+            brushCursor.x, mouseX, 0.25
+        );
+        brushCursor.y = lerp(
+            brushCursor.y, mouseY, 0.25
+        );
+
+        // Movement increases the disturbance slightly
+        const movement = Math.hypot(
+            brushCursor.x - oldX,
+            brushCursor.y - oldY
+        );
+
+        brushCursor.motion = lerp(
+            brushCursor.motion,
+            constrain(movement / 9, 0, 1),
+            0.18
+        );
+    } else {
+        brushCursor.motion = lerp(
+            brushCursor.motion, 0, 0.15
+        );
+    }
+
+    // Fade the disturbance in and out
+    brushCursor.active = lerp(
+        brushCursor.active,
+        inside ? 1 : 0,
+        0.12
+    );
+
+    brushCursor.wasInside = inside;
+}
+
 
 // Vertex shader: full-screen texture coordinates
 const BRUSH_FLOW_VERT = `
@@ -47,6 +115,13 @@ uniform float u_time;
 uniform float u_strength;
 uniform float u_speed;
 
+uniform vec2 u_cursor;
+uniform float u_cursorRadius;
+uniform float u_cursorStrength;
+uniform float u_cursorActive;
+uniform float u_cursorMotion;
+
+
 void main() {
   vec2 uv = vTexCoord;
 
@@ -72,11 +147,55 @@ void main() {
   // Smooth displacement without separate long strokes
   float localStrength = texture2D(u_flowMap, uv).b;
 
+  // Existing global flow
   float displacement =
-  sin(phase) * u_strength * localStrength;
+    sin(phase) * u_strength * localStrength;
 
-  vec2 displacedUV =
-    uv - direction * displacement / u_resolution;
+  // Distance from the cursor in canvas pixels
+  vec2 cursorDelta = pixelPosition - u_cursor;
+
+  float distanceSquared =
+    dot(cursorDelta, cursorDelta);
+
+  // Soft local falloff, not a circular ripple
+  float cursorInfluence = exp(
+    -0.5 * distanceSquared /
+    (u_cursorRadius * u_cursorRadius)
+  );
+
+  // Animate along the existing flow direction
+  float cursorPhase =
+    dot(pixelPosition / 42.0, direction) * 1.2
+    - u_time * u_speed * 1.7;
+
+  float cursorWave = sin(cursorPhase);
+
+  // Stronger while moving, subtle while stationary
+  float motionStrength =
+    0.4 + 0.6 * u_cursorMotion;
+
+  float cursorAmount =
+    cursorWave *
+    u_cursorStrength *
+    motionStrength *
+    cursorInfluence *
+    u_cursorActive *
+    localStrength;
+
+  // Slight sideways bending
+  vec2 sideways = vec2(
+    -direction.y,
+    direction.x
+  );
+
+  vec2 cursorOffset =
+    (direction * 0.85 + sideways * 0.15)
+    * cursorAmount;
+
+  // Combine global flow and local cursor influence
+  vec2 displacedUV = uv -
+    (direction * displacement + cursorOffset)
+    / u_resolution;
 
   displacedUV = clamp(
     displacedUV,
@@ -205,6 +324,7 @@ function drawBrushFlowShader() {
 
     if (!brushFlowSettings.paused) {
         brushFlowTime += Math.min(deltaTime, 33) * 0.001;
+        updateBrushCursor();
     }
 
     brushFlowBuffer.shader(brushFlowProgram);
@@ -238,6 +358,35 @@ function drawBrushFlowShader() {
         "u_speed",
         brushFlowSettings.speed
     );
+
+
+    brushFlowProgram.setUniform(
+        "u_cursor",
+        [brushCursor.x, brushCursor.y]
+    );
+
+    brushFlowProgram.setUniform(
+        "u_cursorRadius",
+        brushFlowSettings.cursorRadius
+    );
+
+    brushFlowProgram.setUniform(
+        "u_cursorStrength",
+        brushFlowSettings.cursorStrength
+    );
+
+    brushFlowProgram.setUniform(
+        "u_cursorActive",
+        brushFlowSettings.cursorEnabled
+            ? brushCursor.active
+            : 0
+    );
+
+    brushFlowProgram.setUniform(
+        "u_cursorMotion",
+        brushCursor.motion
+    );
+
 
     brushFlowBuffer.clear();
     brushFlowBuffer.plane(width, height);

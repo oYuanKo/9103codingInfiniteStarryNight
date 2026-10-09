@@ -27,7 +27,17 @@ let universeCount = 1;
 let inputMechanic;
 
 function setup() {
-  createCanvas(800, 600);
+  const canvas = createCanvas(800, 600);
+
+  if (BRUSH_V2_PREVIEW) {
+    canvas.mouseOver(() => {
+      brushCursor.inside = true;
+    });
+
+    canvas.mouseOut(() => {
+      brushCursor.inside = false;
+    });
+  }
   pixelDensity(1);
   textFont("Arial");
 
@@ -397,6 +407,18 @@ function keyPressed() {
       initBrushV2(seed);
       rebuildBrushFlowMap();
       brushFlowTime = 0;
+    }
+
+    if (key === "c" || key === "C") {
+      brushFlowSettings.cursorEnabled =
+        !brushFlowSettings.cursorEnabled;
+
+      console.log(
+        "Cursor disturbance:",
+        brushFlowSettings.cursorEnabled
+          ? "ON"
+          : "OFF"
+      );
     }
 
     return;
