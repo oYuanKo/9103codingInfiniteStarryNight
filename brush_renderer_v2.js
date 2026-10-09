@@ -154,6 +154,7 @@ const brushV2 = {
     marks: [],
     stars: [],
     village: null,
+    cypress: null,
     time: 0
 };
 
@@ -288,6 +289,7 @@ function initBrushV2(seed) {
     brushV2.marks = [];
     brushV2.stars = [];
     brushV2.village = null;
+    brushV2.cypress = null;
 
     // Pass 1: dense coverage
     const step = BRUSH_V2_SETTINGS.spacing;
@@ -336,7 +338,10 @@ function initBrushV2(seed) {
 
     brushV2.village = generateVillageLayout();
     paintBrushVillage(brushV2.base);
-    
+
+    brushV2.cypress = generateCypressLayout();
+    paintBrushCypress(brushV2.base);
+
 
     // Living brush marks keep stable home positions
     for (let i = 0; i < BRUSH_V2_SETTINGS.movingCount; i++) {
