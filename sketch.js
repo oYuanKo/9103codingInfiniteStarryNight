@@ -1,4 +1,8 @@
+const SPACE_BG = [3, 6, 20];
 
+// Zoom thresholds
+const SPACE_REVEAL_START = 0.80;
+const SPACE_REVEAL_END = 0.30;
 const STATES = {
   NIGHT: "NIGHT",
   SPACE: "SPACE",
@@ -9,10 +13,13 @@ const STATES = {
 let currentState = STATES.NIGHT;
 let universeSeed = 12;
 let universeCount = 1;
+let inputMechanic;
 
 function setup() {
   createCanvas(800, 600);
   textFont("Arial");
+
+  inputMechanic = new InputMechanic();
 
   generateUniverse(universeSeed);
   initDebugGUI();
@@ -45,32 +52,78 @@ function draw() {
 // Placeholder scenes
 
 
-function drawNight() {
-  background(...worldPalette.sky);
 
+
+function drawNight() {
   const dt = min(deltaTime / 16.67, 2);
 
-  // Update Perlin + Vortex movement
+  // Update zoom
+  inputMechanic.update();
+
+  // Calculate transition progress
+  const transition = getSpaceTransitionProgress(
+    inputMechanic.zoomLevel
+  );
+
+  // Blend background colours
+  const nightColor = color(...worldPalette.sky);
+  const spaceColor = color(...SPACE_BG);
+
+  background(
+    lerpColor(nightColor, spaceColor, transition)
+  );
+
+  // Keep Perlin strokes moving
   updateBrushStrokes(dt, debugParams.brushSpeed);
 
-  // Moving painterly brushstrokes
-  displayBrushStrokes();
+  // Draw NIGHT world with camera zoom
+  if (transition < 1) {
+    push();
 
-  // Circular brushstrokes around stars
-  displayStarHalos();
+    drawingContext.globalAlpha = 1 - transition;
 
-  // Star glow and core
-  displayStarField();
+    translate(width / 2, height / 2);
+    scale(inputMechanic.zoomLevel);
+    translate(-width / 2, -height / 2);
 
-  // Debug label
-  drawSceneLabel("NIGHT - Starry Night");
+    displayBrushStrokes();
+    displayStarHalos();
+    displayStarField();
+
+    pop();
+  }
+
+  // Fade in the SPACE starfield
+  displaySpaceStarField(transition);
+
+  // Debug display
+  drawSceneLabel(
+    transition < 1
+      ? "NIGHT - Zooming Out"
+      : "Entering SPACE"
+  );
+
+  // Switch state when zoom reaches minimum
+  if (
+    inputMechanic.zoomLevel <=
+    inputMechanic.minZoom + 0.005 &&
+    inputMechanic.targetZoom <=
+    inputMechanic.minZoom + 0.001
+  ) {
+    changeState(STATES.SPACE);
+  }
 }
 
 
 function drawSpace() {
-  background(3, 6, 20);
+  background(...SPACE_BG);
+
+  // Full deep-space starfield
+  displaySpaceStarField(1);
+
   drawSceneLabel("SPACE - Deep Space");
 }
+
 
 function drawStar() {
   background(10, 15, 35);
@@ -117,14 +170,14 @@ function changeState(nextState) {
 function startNewUniverse() {
   universeCount++;
 
-  // Placeholder seed selection.
-  // Later we will use this to generate stars and flow.
   universeSeed = floor(random(1, 1000000));
 
   generateUniverse(universeSeed);
+
+  inputMechanic.reset();
+
   changeState(STATES.NIGHT);
 }
-
 // Temporary keyboard controls
 
 function keyPressed() {
@@ -149,3 +202,46 @@ function loadTestUniverse(seed) {
   changeState(STATES.NIGHT);
 }
 
+
+function mouseWheel(event) {
+  // Ignore scroll on debug GUI
+  if (
+    event.target &&
+    event.target.closest &&
+    event.target.closest("#debug-gui")
+  ) {
+    return;
+  }
+
+  if (currentState === STATES.NIGHT) {
+    inputMechanic.handleWheel(event.delta);
+  }
+
+  else if (currentState === STATES.SPACE) {
+    // Scroll up to return to NIGHT
+    if (event.delta < 0) {
+      changeState(STATES.NIGHT);
+      inputMechanic.handleWheel(event.delta);
+    }
+  }
+
+  // Prevent normal page scrolling
+  return false;
+}
+
+
+
+function getSpaceTransitionProgress(zoom) {
+  let t = map(
+    zoom,
+    SPACE_REVEAL_START,
+    SPACE_REVEAL_END,
+    0,
+    1
+  );
+
+  t = constrain(t, 0, 1);
+
+  // Smoothstep: softer start and finish
+  return t * t * (3 - 2 * t);
+}

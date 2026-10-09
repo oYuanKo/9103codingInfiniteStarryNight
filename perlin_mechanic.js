@@ -4,6 +4,7 @@ let flowField = [];
 let brushStrokes = [];
 let vortices = [];
 let flowTime = 0;
+let spaceStars = [];
 
 const FLOW_TIME_SPEED = 0.003;
 const FLOW_SPACING = 20;
@@ -121,6 +122,8 @@ function generateUniverse(seed) {
 
     // 4. Create moving brush strokes
     createBrushStrokes();
+
+    spaceStars = generateSpaceStars();
 
     console.log("Universe generated:", seed);
 }
@@ -507,4 +510,63 @@ function resizeBrushStrokes(targetCount) {
     if (brushStrokes.length > targetCount) {
         brushStrokes.length = targetCount;
     }
+}
+
+
+function generateSpaceStars() {
+    const newStars = [];
+
+    for (let i = 0; i < 130; i++) {
+        const isMajor = i < 7;
+
+        newStars.push({
+            x: random(25, width - 25),
+            y: random(25, height - 25),
+
+            radius: isMajor
+                ? random(4, 9)
+                : random(0.5, 1.8),
+
+            brightness: random(150, 255),
+            isMajor: isMajor
+        });
+    }
+
+    return newStars;
+}
+
+function displaySpaceStarField(opacity = 1) {
+    push();
+    drawingContext.globalAlpha = constrain(
+        opacity, 0, 1
+    );
+
+    noStroke();
+
+    for (const star of spaceStars) {
+        // Glow for major stars
+        if (star.isMajor) {
+            fill(255, 205, 120, 25);
+            circle(
+                star.x,
+                star.y,
+                star.radius * 6
+            );
+        }
+
+        // Star core
+        if (star.isMajor) {
+            fill(255, 225, 160, star.brightness);
+        } else {
+            fill(190, 215, 255, star.brightness);
+        }
+
+        circle(
+            star.x,
+            star.y,
+            star.radius * 2
+        );
+    }
+
+    pop();
 }
