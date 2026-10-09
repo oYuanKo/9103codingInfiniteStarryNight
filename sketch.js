@@ -44,7 +44,20 @@ function draw() {
 // Placeholder scenes
 
 function drawNight() {
-  background(15, 35, 75);
+  background(...worldPalette.sky);
+
+  // Frame-rate-independent movement
+  const dt = min(deltaTime / 16.67, 2);
+
+  // Update Perlin-driven strokes
+  updateBrushStrokes(dt);
+
+  // Draw moving brush strokes
+  displayBrushStrokes();
+
+  // Draw stars above the strokes
+  displayStarField();
+
   drawSceneLabel("NIGHT - Starry Night");
 }
 
@@ -113,8 +126,20 @@ function keyPressed() {
   if (key === "2") changeState(STATES.SPACE);
   if (key === "3") changeState(STATES.STAR);
   if (key === "4") changeState(STATES.FADE);
+  if (key === "q" || key === "Q") loadTestUniverse(12);
+  if (key === "w" || key === "W") loadTestUniverse(89);
+  if (key === "e" || key === "E") loadTestUniverse(205);
 
   if (key === "n" || key === "N") {
     startNewUniverse();
   }
 }
+
+
+function loadTestUniverse(seed) {
+  universeSeed = seed;
+
+  generateUniverse(universeSeed);
+  changeState(STATES.NIGHT);
+}
+
