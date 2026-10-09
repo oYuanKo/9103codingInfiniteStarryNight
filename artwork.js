@@ -495,7 +495,7 @@ function pointInCypress(px, py, layout) {
 
     if (py < topY || py > layout.baseY) return false;
 
-    const t = 1 - (layout.baseY - py) / layout.height; // 0 bottom, 1 top
+    const t = (layout.baseY - py) / layout.height;
     const halfWidth = cypressHalfWidth(layout, t);
     const cx = cypressCenterX(layout, t);
 
@@ -522,7 +522,7 @@ function paintBrushCypress(g) {
 
             if (!pointInCypress(px, py, layout)) continue;
 
-            const t = 1 - (layout.baseY - py) / layout.height;
+            const t = (layout.baseY - py) / layout.height;
 
             // Mostly upward, with small curvature
             let angle =
@@ -562,7 +562,7 @@ function paintBrushCypress(g) {
 
         if (!pointInCypress(px, py, layout)) continue;
 
-        const t = 1 - (layout.baseY - py) / layout.height;
+        const t = (layout.baseY - py) / layout.height;
 
         const angle =
             -HALF_PI
@@ -594,7 +594,7 @@ function paintBrushCypress(g) {
     // ------------------------------------------------------------------
     for (let i = 0; i < 220; i++) {
         const t = random();
-        const y = lerp(topY, layout.baseY, t);
+        const y = lerp(layout.baseY, topY, t);
 
         const halfWidth = cypressHalfWidth(layout, t);
         const cx = cypressCenterX(layout, t);
