@@ -2,9 +2,10 @@ let stars = [];
 let worldPalette;
 let flowField = [];
 let brushStrokes = [];
+let vortices = [];
 let flowTime = 0;
 
-const BRUSH_COUNT = 320;
+const BRUSH_COUNT = 600;
 const FLOW_TIME_SPEED = 0.003;
 
 const FLOW_SPACING = 20;
@@ -29,15 +30,77 @@ const WORLD_PALETTES = [
     }
 ];
 
+const BRUSH_PALETTES = [
+    // Blue universe
+    [
+        [65, 110, 175],
+        [100, 155, 205],
+        [150, 190, 220],
+        [220, 185, 115]
+    ],
+
+    // Teal universe
+    [
+        [45, 115, 135],
+        [90, 165, 175],
+        [145, 205, 200],
+        [220, 225, 170]
+    ],
+
+    // Purple universe
+    [
+        [90, 80, 155],
+        [145, 120, 195],
+        [185, 155, 215],
+        [240, 175, 125]
+    ]
+];
+
+
 function getFlowAngle(x, y, z = 0) {
+    // Original Perlin direction
     const noiseValue = noise(
         x * FLOW_NOISE_SCALE,
         y * FLOW_NOISE_SCALE,
         z
     );
 
-    return noiseValue * TWO_PI * 2;
+    const baseAngle = noiseValue * TWO_PI * 2;
+
+    let vx = cos(baseAngle);
+    let vy = sin(baseAngle);
+
+    // Blend Perlin direction with vortices
+    for (const vortex of vortices) {
+        const dx = x - vortex.x;
+        const dy = y - vortex.y;
+
+        const distance = sqrt(dx * dx + dy * dy);
+
+        if (distance >= vortex.radius || distance < 1) {
+            continue;
+        }
+
+        // Strong near centre, weak near edge
+        const falloff = 1 - distance / vortex.radius;
+        const influence =
+            vortex.strength * falloff * falloff;
+
+        // Tangential direction around vortex
+        const tx = -dy / distance * vortex.direction;
+        const ty = dx / distance * vortex.direction;
+
+        // Add a small outward spiral component
+        const spiral = 0.12;
+
+        vx += (tx + dx / distance * spiral) * influence;
+        vy += (ty + dy / distance * spiral) * influence;
+    }
+
+    return atan2(vy, vx);
 }
+
+
 
 
 function generateUniverse(seed) {
@@ -49,17 +112,19 @@ function generateUniverse(seed) {
 
     worldPalette = WORLD_PALETTES[paletteIndex];
 
-    // Generate stars
+    // 1. Generate stars
     stars = generateStarField();
 
-    // Generate static flow field
+    // 2. Generate vortex centres
+    createVortices();
+
+    // 3. Generate Perlin flow field
     createFlowField();
 
-    // Generate animated brush strokes
+    // 4. Create moving brush strokes
     createBrushStrokes();
 
     console.log("Universe generated:", seed);
-    console.log("Number of stars:", stars.length);
 }
 
 
@@ -199,16 +264,18 @@ class BrushStroke {
         this.angle = 0;
 
         // Individual stroke properties
-        this.length = random(8, 22);
-        this.speed = random(0.8, 1.8);
-        this.weight = random(1, 2.5);
-        this.alpha = random(90, 185);
+        this.length = random(12, 30);
+        this.speed = random(0.5, 1.4);
+        this.weight = random(1.2, 2.8);
+        this.alpha = random(110, 200);
 
         // Colour from the current universe
-        this.colour = random() < 0.65
-            ? [...worldPalette.core]
-            : [...worldPalette.glow];
+        const paletteIndex =
+            Math.abs(universeSeed) % BRUSH_PALETTES.length;
 
+        this.colour = [
+            ...random(BRUSH_PALETTES[paletteIndex])
+        ];
         // Small individual variation
         this.noiseOffset = random(1000);
     }
@@ -258,24 +325,63 @@ class BrushStroke {
         }
     }
 
+
     display() {
         const [r, g, b] = this.colour;
 
-        stroke(r, g, b, this.alpha);
-        strokeWeight(this.weight);
+        const x = this.position.x;
+        const y = this.position.y;
+
+        const ux = cos(this.angle);
+        const uy = sin(this.angle);
+
+        // Perpendicular direction
+        const nx = -uy;
+        const ny = ux;
 
         const half = this.length / 2;
 
-        const dx = cos(this.angle) * half;
-        const dy = sin(this.angle) * half;
+        // A small bend for painterly appearance
+        const bend =
+            sin(this.noiseOffset) * this.length * 0.14;
 
-        line(
-            this.position.x - dx,
-            this.position.y - dy,
-            this.position.x + dx,
-            this.position.y + dy
-        );
+        const points = [
+            { x: x - ux * half, y: y - uy * half },
+            {
+                x: x - ux * half * 0.33 + nx * bend * 0.5,
+                y: y - uy * half * 0.33 + ny * bend * 0.5
+            },
+            {
+                x: x + ux * half * 0.33 + nx * bend,
+                y: y + uy * half * 0.33 + ny * bend
+            },
+            { x: x + ux * half, y: y + uy * half }
+        ];
+
+        noFill();
+        strokeCap(ROUND);
+
+        // Wider, translucent paint layer
+        stroke(r, g, b, this.alpha * 0.25);
+        strokeWeight(this.weight * 2.8);
+
+        beginShape();
+        for (const p of points) {
+            vertex(p.x, p.y);
+        }
+        endShape();
+
+        // Narrow, brighter paint layer
+        stroke(r, g, b, this.alpha);
+        strokeWeight(this.weight);
+
+        beginShape();
+        for (const p of points) {
+            vertex(p.x, p.y);
+        }
+        endShape();
     }
+
 }
 
 // Create all brush strokes for the current universe
@@ -310,6 +416,78 @@ function displayBrushStrokes() {
 
     for (let stroke of brushStrokes) {
         stroke.display();
+    }
+
+    pop();
+}
+
+
+function createVortices() {
+    vortices = [
+        {
+            // Main spiral near the centre of the sky
+            x: width * 0.44 + random(-25, 25),
+            y: height * 0.34 + random(-15, 15),
+            radius: min(width, height) * 0.39,
+            strength: 4.8,
+            direction: 1
+        },
+        {
+            // Smaller secondary spiral
+            x: width * 0.73 + random(-20, 20),
+            y: height * 0.49 + random(-20, 20),
+            radius: min(width, height) * 0.25,
+            strength: 4.0,
+            direction: -1
+        }
+    ];
+}
+
+
+function displayStarHalos() {
+    if (!worldPalette) return;
+
+    push();
+    noFill();
+    strokeCap(ROUND);
+
+    for (let i = 0; i < stars.length; i++) {
+        const star = stars[i];
+
+        // Only major stars receive large halos
+        if (!star.isMajor) continue;
+
+        // Gentle breathing animation
+        const phase = frameCount * 0.01 + i * 0.65;
+        const pulse = 1 + 0.04 * sin(phase);
+
+        const baseRadius = star.radius * 2.5;
+
+        for (let ring = 0; ring < 3; ring++) {
+            const radius =
+                baseRadius + ring * star.radius * 0.8;
+
+            const start =
+                i * 1.9 + ring * 2.2 +
+                frameCount * 0.001 * (ring % 2 === 0 ? 1 : -1);
+
+            const end =
+                start + PI * (1.2 - ring * 0.12);
+
+            const [r, g, b] = worldPalette.glow;
+
+            stroke(r, g, b, 100 - ring * 24);
+            strokeWeight(max(1, 2.5 - ring * 0.6));
+
+            arc(
+                star.x,
+                star.y,
+                radius * 2 * pulse,
+                radius * 2 * pulse,
+                start,
+                end
+            );
+        }
     }
 
     pop();

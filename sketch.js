@@ -43,23 +43,28 @@ function draw() {
 
 // Placeholder scenes
 
+
 function drawNight() {
   background(...worldPalette.sky);
 
-  // Frame-rate-independent movement
   const dt = min(deltaTime / 16.67, 2);
 
-  // Update Perlin-driven strokes
+  // Update Perlin + Vortex movement
   updateBrushStrokes(dt);
 
-  // Draw moving brush strokes
+  // Moving painterly brushstrokes
   displayBrushStrokes();
 
-  // Draw stars above the strokes
+  // Circular brushstrokes around stars
+  displayStarHalos();
+
+  // Star glow and core
   displayStarField();
 
+  // Debug label
   drawSceneLabel("NIGHT - Starry Night");
 }
+
 
 function drawSpace() {
   background(3, 6, 20);
