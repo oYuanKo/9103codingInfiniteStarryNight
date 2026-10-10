@@ -465,7 +465,7 @@ function keyPressed() {
       );
     }
     if (key === "r" || key === "R") {
-      v2Camera.reset();
+      resetNestedCameraV2();
     }
 
     return;
@@ -518,6 +518,8 @@ function mouseWheel(event) {
     ) {
       return false;
     }
+
+    if (event.delta > 0 && tryExitWorldV2(event.delta)) return false;
 
     // Otherwise keep normal cursor-centred zoom
     v2Camera.zoomAt(event.delta, mouseX, mouseY);
