@@ -177,3 +177,55 @@ large strokes remain large, though their edges and highlights are now resolved.
 The transition is still a 2D paint-region blend, not a one-to-one morph of each
 parent stroke into a child stroke. Short desktop tests are not a long-duration
 memory soak or a guarantee for integrated/mobile GPUs.
+
+## Step 6D.2 �� hierarchical paint detail and continuous depth (local)
+
+This supersedes the Step 6D.1 texture dimensions, memory figures and late
+ownership thresholds described above. World graph, cameras, controls, base
+painting and incremental world generation are unchanged.
+
+- Exact brush replay is retained. Each local cache is a 2048x1536 atlas with
+  three 1024x768 panels: original geometry, meso brushlets, and meso + finer
+  brushlets. The fourth panel is unused padding. The original paint order is
+  replayed independently in each panel so hidden strokes cannot leak through.
+- Micro-brushes are actual cubic Bezier strokes placed inside the original
+  cubic's paint body. Seed + source stroke ID + layer + strand determine their
+  placement, length, width, opacity and modest light/dark variation. Original
+  direction/curvature dominate; the existing local Perlin flow adjusts the
+  curvature. Neither randomSeed nor noiseSeed is touched during detail work.
+- Two finite levels fade in at 2.4�C6x and 6�C16x. They are interpolated in the
+  shader from cached geometry, without rerasterising on each wheel event.
+  Fine geometry is omitted in low-resolution atlases where its depth weight
+  is zero. A warm finer atlas can replace it with the existing 140 ms loading
+  refinement. This asset fade is time based; navigation depth is not.
+- Spatial indexing, a cooperative 2 ms work budget, one job, and the five-atlas
+  global LRU cap remain. The cap includes unfinished and fading atlases:
+  **60 MiB RGBA GPU payload plus approximately 60 MiB CPU canvas storage**,
+  excluding browser overhead and existing world textures. Stale jobs are
+  cancelled when their source/view/scale no longer serves the requested view.
+  World disposal and seed reset remove both canvas and shared GL cache entries.
+- Depth is no longer delayed until 38%. A broad star-centred, flow-aligned
+  influence and existing brush footprints gently offset local depth. They do
+  not cut an aperture. Child pigment sampled along its flow first recolours
+  parent paint while retaining parent luminance; child structure resolves
+  throughout the same smooth depth curve. Flow directions turn on the unit
+  circle, avoiding the zero-vector discontinuity of opposite directions.
+- **This is not matched parent/child stroke morphing.** Micro detail is real
+  geometry; world colour transfer, flow turning and structure blending are
+  shader approximations. Mid-transition double exposure remains possible.
+  Two detail levels do not supply infinite complexity; large parent strokes
+  retain their original silhouette and broad highlight. Existing child camera
+  framing still resolves a crop to the full child composition.
+
+Run `node tests/hierarchy.browser.cjs` in addition to the three browser suites
+above (Playwright and Edge required). It writes paired micro/replay crops at
+3x/6x/12x/24x and `tests/step6d2-transition-{20,40,60,80}.png`. It checks atlas
+regeneration, settled reversal, early evolution, endpoints, stale jobs, cache
+bounds, reset cleanup, GPU-readback timings and cold atlas arrival. The original
+detail suite disables micro shading to continue checking exact base geometry.
+Geometry generation must match exactly after regeneration. GPU-backed 2D atlas
+and shader pixels may differ by a few raster/compositing rounding
+values between rebuilds; the test bounds that tolerance explicitly. Browser timing is
+machine dependent. Cold detail takes multiple frames; old paint remains visible
+until completion. These checks do not establish subjective visual naturalness
+or a long-duration memory-leak guarantee.

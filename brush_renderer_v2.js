@@ -290,7 +290,7 @@ function* buildBrushV2Steps(seed, preservePrevious = false) {
     brushV2.motion.pixelDensity(1);
 
     brushV2.base.background(12, 28, 60);
-    brushV2.detailSource = newBrushDetailSourceV2();
+    brushV2.detailSource = newBrushDetailSourceV2(seed);
 
     brushV2.time = 0;
     brushV2.marks = [];

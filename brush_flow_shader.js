@@ -136,6 +136,8 @@ uniform vec4 u_detailWeights;
 uniform vec4 u_childDetailWeights;
 uniform float u_progress;
 uniform float u_portalActive;
+uniform float u_microEnabled;
+uniform vec2 u_portalAnchor;
 
 float pigmentHash(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -160,20 +162,38 @@ float brushOwnership(vec2 point, vec2 direction, vec2 seed) {
   return sum / max(weights, 0.00001);
 }
 
+// Interpolate directions on the unit circle, avoiding cancellation at opposite vectors.
+vec2 turnFlow(vec2 from, vec2 to, float t) {
+  float a=atan(from.y+0.00001,from.x+0.00001);
+  float b=atan(to.y+0.00001,to.x+0.00001);
+  float d=mod(b-a+3.14159265,6.2831853)-3.14159265;
+  return vec2(cos(a+d*t),sin(a+d*t));
+}
 vec2 cameraPoint(vec2 screen, vec3 camera) { return (screen - camera.xy) / camera.z; }
 vec2 cameraScale(vec2 screen, vec3 camera) { return vec2(camera.z); }
 
-vec4 patchPaint(vec4 fallback, sampler2D patch, vec4 rect, vec2 point, float enabled) {
+vec4 patchPaint(vec4 fallback, sampler2D patch, vec4 rect, vec2 point, float enabled, float zoom) {
+  if (enabled <= 0.0) return fallback;
   vec2 uv = (point - rect.xy) / rect.zw;
-  vec2 edge = min(uv, 1.0 - uv) * vec2(1536.0, 1152.0);
+  vec2 edge = min(uv, 1.0 - uv) * vec2(1024.0, 768.0);
   float coverage = smoothstep(0.0, 12.0, min(edge.x, edge.y)) * enabled;
-  return mix(fallback, texture2D(patch, clamp(uv, 0.0, 1.0)), coverage);
+  if (coverage <= 0.0) return fallback;
+  // Half-texel inset prevents atlas neighbours bleeding into patch borders.
+  vec2 at = clamp(uv, vec2(.5/1024.0,.5/768.0), vec2(1.0-.5/1024.0,1.0-.5/768.0)) * .5;
+  vec4 exact = texture2D(patch, at);
+  vec4 meso = texture2D(patch, at + vec2(.5,0.0));
+  vec4 micro = texture2D(patch, at + vec2(0.0,.5));
+  float a = smoothstep(2.4, 6.0, zoom) * u_microEnabled;
+  float b = smoothstep(6.0, 16.0, zoom) * u_microEnabled;
+  vec4 paint = mix(mix(exact, meso, a), micro, b);
+  return mix(fallback, paint, coverage);
 }
 vec4 detailedPaint(sampler2D paint, sampler2D a, sampler2D b,
-                   vec4 rectA, vec4 rectB, vec4 weights, vec2 uv) {
+                   vec4 rectA, vec4 rectB, vec4 weights, vec2 uv, float zoom) {
   vec4 base = texture2D(paint, uv);
-  vec4 oldPaint = patchPaint(base, a, rectA, uv * u_resolution, weights.x);
-  vec4 newPaint = patchPaint(oldPaint, b, rectB, uv * u_resolution, weights.y);
+  if (weights.w <= 0.0) return base;
+  vec4 oldPaint = patchPaint(base, a, rectA, uv * u_resolution, weights.x, zoom);
+  vec4 newPaint = patchPaint(oldPaint, b, rectB, uv * u_resolution, weights.y, zoom);
   return mix(base, mix(oldPaint, newPaint, weights.z), weights.w);
 }
 
@@ -197,7 +217,7 @@ vec4 samplePainting(sampler2D paint, sampler2D flow, vec2 point,
     direction = vec2(0.0);
   }
 
-  direction = normalize(mix(direction, morphDirection, morph) + vec2(0.00001));
+  if (morph > 0.0) direction = turnFlow(direction, morphDirection, morph);
 
   // A travelling phase along the local direction
   vec2 pixelPosition = uv * u_resolution;
@@ -281,16 +301,15 @@ vec4 samplePainting(sampler2D paint, sampler2D flow, vec2 point,
     vec2(0.999)
   );
 
-  return detailedPaint(paint, detailA, detailB, rectA, rectB, weights, displacedUV);
+  return detailedPaint(paint, detailA, detailB, rectA, rectB, weights, displacedUV, camera.z);
 }
 
 void main() {
   vec2 screen = vTexCoord * u_resolution;
   vec2 parentPoint = cameraPoint(screen, u_camera);
   vec2 childPoint = cameraPoint(screen, u_childCamera);
-  // Early zoom belongs entirely to the parent. Later, flow-aligned paint
-  // regions change ownership across the canvas: no radial aperture or frame.
-  float phase = smoothstep(0.38, 0.96, u_progress) * u_portalActive;
+  // Depth is wheel driven; colour, direction and structure share continuous endpoints.
+  float phase = u_progress * u_portalActive;
   if (phase <= 0.0) {
     gl_FragColor = samplePainting(u_paint, u_flowMap, parentPoint, u_camera, u_time,
       u_detailA, u_detailB, u_detailRectA, u_detailRectB, u_detailWeights, vec2(0.0), 0.0);
@@ -306,23 +325,32 @@ void main() {
   vec2 direction = normalize(parentFlow + vec2(0.00001));
   vec2 seed = vec2(mod(u_seed, 997.0), mod(u_seed, 577.0));
   float stroke = brushOwnership(parentPoint, direction, seed);
-  float threshold = 0.18 + stroke * 0.64;
-  float mask = smoothstep(threshold - 0.10, threshold + 0.10, phase);
-  vec2 blendedFlow = normalize(mix(parentFlow, childFlow, phase) + vec2(0.00001));
-  float morph = phase * (1.0 - phase) * 1.4;
-  if (mask <= 0.0) {
-    gl_FragColor = samplePainting(u_paint, u_flowMap, parentPoint, u_camera, u_time,
-      u_detailA, u_detailB, u_detailRectA, u_detailRectB, u_detailWeights, blendedFlow, morph);
-  } else if (mask >= 1.0) {
-    gl_FragColor = samplePainting(u_childPaint, u_childFlow, childPoint, u_childCamera, u_childTime,
-      u_childDetailA, u_childDetailB, u_childDetailRectA, u_childDetailRectB, u_childDetailWeights, blendedFlow, morph);
-  } else {
-    gl_FragColor = mix(
-      samplePainting(u_paint, u_flowMap, parentPoint, u_camera, u_time,
-        u_detailA, u_detailB, u_detailRectA, u_detailRectB, u_detailWeights, blendedFlow, morph),
-      samplePainting(u_childPaint, u_childFlow, childPoint, u_childCamera, u_childTime,
-        u_childDetailA, u_childDetailB, u_childDetailRectA, u_childDetailRectB, u_childDetailWeights, blendedFlow, morph), mask);
-  }
+  // A broad flow-aligned influence from the entered star changes local DEPTH,
+  // not opacity of a hole. p + k*p*(1-p) has exact endpoints and is monotonic
+  // for |k| < 1. Fixed world coordinates keep the brush pattern reversible.
+  vec2 offset = (screen-u_portalAnchor)/u_resolution;
+  vec2 along = vec2(dot(offset,direction),dot(offset,vec2(-direction.y,direction.x)));
+  float origin = exp(-dot(along*vec2(1.3,3.0),along*vec2(1.3,3.0)));
+  float local = phase + phase*(1.0-phase)*(.55*(origin-.5)+.35*(stroke-.5));
+  float depth = local*local*(3.0-2.0*local);
+  vec2 blendedFlow = turnFlow(parentFlow, childFlow, depth);
+  vec4 parent = samplePainting(u_paint, u_flowMap, parentPoint, u_camera, u_time,
+    u_detailA, u_detailB, u_detailRectA, u_detailRectB, u_detailWeights, blendedFlow, depth);
+  vec4 child = samplePainting(u_childPaint, u_childFlow, childPoint, u_childCamera, u_childTime,
+    u_childDetailA, u_childDetailB, u_childDetailRectA, u_childDetailRectB, u_childDetailWeights, blendedFlow, 1.0-depth);
+  // Transport child colour along its flow before resolving its composition.
+  // Parent luminance retains its enlarged stroke geometry during this stage.
+  vec2 childUV = clamp(childPoint/u_resolution,0.0,1.0);
+  vec2 spread = normalize(childFlow+vec2(.00001))*vec2(24.0)/u_resolution;
+  vec3 pigment = (texture2D(u_childPaint,clamp(childUV-spread,0.0,1.0)).rgb +
+                  texture2D(u_childPaint,childUV).rgb*2.0 +
+                  texture2D(u_childPaint,clamp(childUV+spread,0.0,1.0)).rgb)*.25;
+  float lum = dot(parent.rgb,vec3(.299,.587,.114));
+  float childLum = max(.08,dot(pigment,vec3(.299,.587,.114)));
+  vec3 recoloured = clamp(pigment * clamp(lum/childLum,.55,1.65),0.0,1.0);
+  vec3 evolving = mix(parent.rgb,recoloured,depth*.72);
+  // Continuous structural formation across the FULL range, not a late threshold.
+  gl_FragColor = vec4(mix(evolving,child.rgb,depth),1.0);
 }
 
 `;
@@ -453,8 +481,8 @@ function drawBrushFlowShader(present = true, camera = null, portal = null) {
     const childCamera = portal ? portal.childCamera : camera;
     const parentWorld = captureWorldV2();
     updateBrushDetailsV2([
-        portal && portal.progress >= 0.96 ? null : detailViewV2(parentWorld, camera),
-        portal && portal.progress > 0.38 ? detailViewV2(child, childCamera) : null
+        portal && portal.progress >= 1 ? null : detailViewV2(parentWorld, camera),
+        portal && portal.progress > 0 ? detailViewV2(child, childCamera) : null
     ]);
     const parentDetail = brushDetailUniformsV2(parentWorld, camera);
     const childDetail = portal ? brushDetailUniformsV2(child, childCamera) : parentDetail;
@@ -471,6 +499,8 @@ function drawBrushFlowShader(present = true, camera = null, portal = null) {
         u_childDetailA: childDetail.a, u_childDetailB: childDetail.b,
         u_childDetailRectA: childDetail.rectA, u_childDetailRectB: childDetail.rectB, u_childDetailWeights: childDetail.weights,
         u_progress: portal ? portal.progress : 0,
+        u_microEnabled: brushDetailSettings.microEnabled ? 1 : 0,
+        u_portalAnchor: portal ? [portal.anchorX,portal.anchorY] : [width/2,height/2],
         u_cursor: [brushCursor.x, brushCursor.y],
         u_cursorRadius: brushFlowSettings.cursorRadius,
         u_cursorStrength: brushFlowSettings.cursorStrength,

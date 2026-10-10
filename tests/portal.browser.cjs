@@ -24,12 +24,12 @@ const root=path.resolve(__dirname,'..');
   const p1=renderAt(1);const active=captureWorldV2();activateWorldV2(tr.child);drawBrushFlowShader(false,tr.childCamera);const childExact=same(p1,pixels());activateWorldV2(active);
   const half=renderAt(.5);renderAt(.8);const reversible=same(half,renderAt(.5));
   renderAt(.32);const maskImage=pixels(),cam=getStarEntryCameraV2();drawBrushFlowShader(false,cam);const parent=pixels();
-  // The opposite bottom-left region remains precisely parent: no whole-screen fade.
+  // Diagnostic corner comparison: continuous pigment transfer may now affect this region.
   let outsideSame=true;for(let y=560;y<590;y++)for(let x=10;x<50;x++)for(let c=0;c<3;c++){const i=(y*width+x)*4+c;if(maskImage[i]!==parent[i])outsideSame=false;}
   let changed=0;for(let i=0;i<parent.length;i+=4)if(parent[i]!==maskImage[i]||parent[i+1]!==maskImage[i+1])changed++;
   return {parentExact,childExact,reversible,outsideSame,changed};
  });
- console.log('Portal pixel checks:',endpoint);for(const name of ['parentExact','childExact','reversible','outsideSame'])assert.equal(endpoint[name],true,name);assert.equal(endpoint.changed,0); // Early zoom is now entirely parent paint.
+ console.log('Portal pixel checks:',endpoint);for(const name of ['parentExact','childExact','reversible'])assert.equal(endpoint[name],true,name);assert(endpoint.changed>0); // Colour and structure already evolve in early depth.
  for(const p of [0,.2,.45,.7,.9,1]){await page.evaluate(p=>renderAt(p),p);await page.locator('canvas').first().screenshot({path:path.join(root,'tests',`step6d-${Math.round(p*100)}.png`)});}
  // Geometry replay / sharpness checks now live in detail.browser.cjs.
  const cursor=await page.evaluate(()=>{
