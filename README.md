@@ -229,3 +229,54 @@ values between rebuilds; the test bounds that tolerance explicitly. Browser timi
 machine dependent. Cold detail takes multiple frames; old paint remains visible
 until completion. These checks do not establish subjective visual naturalness
 or a long-duration memory-leak guarantee.
+
+## Step 6D.3 ¡ª spatial direction and composition reconstruction
+
+This replaces the 3x-to-1x child crop in earlier steps. Previously the parent
+zoomed in while every recognizable child feature shrank, even with identical
+wheel direction. A finite 2D image cannot start as a magnified crop, monotonically
+magnify, and finish as a full 1x view without changing the spatial model.
+
+The minimal approximation here treats child paint as a virtual plane approaching
+from 0.85x to its existing endpoint camera. For progress p, its relative scale is
+`exp(-log(1 / .85) * (1-p))`. Both parent and child scales increase monotonically
+on inward scroll. The endpoint's world point under the entry star stays anchored
+throughout: `child.xy = anchor + (endpoint.xy - anchor) * scale`. At p=1 this is
+exactly the saved endpoint camera (including an unsettled outward origin camera).
+The existing begin/finish/navigation logic is unchanged; no hidden camera reset
+or time-driven completion was added. Zoom rate is not identical between parent,
+child and the subsequent ordinary camera; this is direction/position continuity,
+not a physically uniform 3D fly-through.
+
+Child composition is not rendered as a framed distant plane. During its virtual
+approach, a small peripheral region samples reflected paint beyond the bounded
+canvas, avoiding stretched edge pixels; this region vanishes at the endpoint.
+This continuation is an approximation and can show repeated peripheral patterns.
+Ordinary rendering and endpoint samples do not use reflection.
+
+The shader separates local pigment reconstruction from sharp structure:
+
+- Entry location, local flow, existing brush footprints and a terrain bias
+  schedule gradual regional reveal. Sky and landscape need not appear together.
+- A low-contrast carrier uses colours sampled from the child's own painting,
+  while a small bounded residual retains existing replay/micro relief.
+- Parent contrast retires locally before sharp child structure takes over.
+  Overlapping smooth ramps avoid hard stage boundaries; no new noise, global
+  framebuffer blur, LOD level, texture or WebGL buffer is introduced.
+- Flow direction interpolation and cursor sampling are retained. All navigation
+  and composition weights depend on reversible wheel depth. Normal animated
+  flow continues unless paused; cache arrival still has its existing asset fade.
+
+This remains shader colour/structure reconstruction between independent images,
+not matching or morphing individual parent/child Beziers. Some blending traces,
+contrast flattening and peripheral reflection may be visible. Monotonic camera
+numbers and endpoint tests cannot prove that the experience feels natural.
+
+Run `node tests/spatial.browser.cjs` in addition to the existing four suites.
+It saves `tests/step6d3-star-{0,1,2}-{20,40,50,60,70,80,90}.png`, checks 101 camera
+samples per entry, anchored coordinates, stopped/reversed frames at 30/50/70%,
+and actual wheel pause/reversal. Pixel reversal freezes cache selection briefly
+so it measures the spatial path rather than asset arrival. Two recordings are
+saved: `step6d3-depth-roundtrip.webm` is a controlled depth sweep with live flow;
+`step6d3-wheel-roundtrip.webm` uses actual wheel events and normal navigation.
+Generated PNG/WebM/log files are already ignored by Git.

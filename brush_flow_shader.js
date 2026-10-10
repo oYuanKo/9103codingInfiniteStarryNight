@@ -170,7 +170,17 @@ vec2 turnFlow(vec2 from, vec2 to, float t) {
   return vec2(cos(a+d*t),sin(a+d*t));
 }
 vec2 cameraPoint(vec2 screen, vec3 camera) { return (screen - camera.xy) / camera.z; }
-vec2 cameraScale(vec2 screen, vec3 camera) { return vec2(camera.z); }
+vec2 cameraScale(vec2 screen, vec3 camera, float reflectEdges) {
+  vec2 scale = vec2(camera.z);
+  if (reflectEdges > 0.0) {
+    vec2 raw = cameraPoint(screen,camera)/u_resolution;
+    // Jacobian signs of the peripheral continuation: cursor drag must follow
+    // the visible paint even where its sampling direction is reflected.
+    if (raw.x < 0.0 || raw.x > 1.0) scale.x = -scale.x;
+    if (raw.y < 0.0 || raw.y > 1.0) scale.y = -scale.y;
+  }
+  return scale;
+}
 
 vec4 patchPaint(vec4 fallback, sampler2D patch, vec4 rect, vec2 point, float enabled, float zoom) {
   if (enabled <= 0.0) return fallback;
@@ -200,10 +210,10 @@ vec4 detailedPaint(sampler2D paint, sampler2D a, sampler2D b,
 vec4 samplePainting(sampler2D paint, sampler2D flow, vec2 point,
                     vec3 camera, float time,
                     sampler2D detailA, sampler2D detailB, vec4 rectA, vec4 rectB, vec4 weights,
-                    vec2 morphDirection, float morph) {
+                    vec2 morphDirection, float morph, float reflectEdges) {
   vec2 uv = clamp(point / u_resolution, vec2(0.0), vec2(1.0));
   vec2 screen = vTexCoord * u_resolution;
-  vec2 localScale = cameraScale(screen, camera);
+  vec2 localScale = cameraScale(screen, camera, reflectEdges);
 
   // Read the existing Perlin + Vortex direction
   vec2 encoded = texture2D(flow, uv).rg;
@@ -308,16 +318,25 @@ void main() {
   vec2 screen = vTexCoord * u_resolution;
   vec2 parentPoint = cameraPoint(screen, u_camera);
   vec2 childPoint = cameraPoint(screen, u_childCamera);
+  // Continue peripheral paint by reflection while the virtual plane is distant.
+  // This avoids stretched boundary pixels and adds no separate framed canvas.
+  // At the normal endpoint every sample is inside [0,1], so the map is identity.
+  vec2 childRawUV = childPoint/u_resolution;
+  if (u_portalActive > 0.0 && u_progress > 0.0 && u_progress < 1.0) {
+    vec2 reflected = (1.0-abs(1.0-mod(childRawUV,2.0)))*u_resolution;
+    if (childRawUV.x < 0.0 || childRawUV.x > 1.0) childPoint.x = reflected.x;
+    if (childRawUV.y < 0.0 || childRawUV.y > 1.0) childPoint.y = reflected.y;
+  }
   // Depth is wheel driven; colour, direction and structure share continuous endpoints.
   float phase = u_progress * u_portalActive;
   if (phase <= 0.0) {
     gl_FragColor = samplePainting(u_paint, u_flowMap, parentPoint, u_camera, u_time,
-      u_detailA, u_detailB, u_detailRectA, u_detailRectB, u_detailWeights, vec2(0.0), 0.0);
+      u_detailA, u_detailB, u_detailRectA, u_detailRectB, u_detailWeights, vec2(0.0), 0.0, 0.0);
     return;
   }
   if (phase >= 1.0) {
     gl_FragColor = samplePainting(u_childPaint, u_childFlow, childPoint, u_childCamera, u_childTime,
-      u_childDetailA, u_childDetailB, u_childDetailRectA, u_childDetailRectB, u_childDetailWeights, vec2(0.0), 0.0);
+      u_childDetailA, u_childDetailB, u_childDetailRectA, u_childDetailRectB, u_childDetailWeights, vec2(0.0), 0.0, 0.0);
     return;
   }
   vec2 parentFlow = texture2D(u_flowMap, clamp(parentPoint/u_resolution, 0.0, 1.0)).rg * 2.0 - 1.0;
@@ -333,24 +352,39 @@ void main() {
   float origin = exp(-dot(along*vec2(1.3,3.0),along*vec2(1.3,3.0)));
   float local = phase + phase*(1.0-phase)*(.55*(origin-.5)+.35*(stroke-.5));
   float depth = local*local*(3.0-2.0*local);
+  vec2 childUV = clamp(childPoint/u_resolution,0.0,1.0);
+  // Local paint first changes pigment; only then does its child structure form.
+  // Terrain joins later than sky. No binary aperture, window or uniform image fade.
+  float terrain = smoothstep(.42,.85,childUV.y);
+  float arrival = clamp(.38 + .24*(1.0-origin) + .20*(stroke-.5) + .18*terrain,.34,.76);
+  float colour = smoothstep(arrival-.30,arrival-.03,phase);
+  float structure = smoothstep(arrival-.02,arrival+.20,phase);
   vec2 blendedFlow = turnFlow(parentFlow, childFlow, depth);
   vec4 parent = samplePainting(u_paint, u_flowMap, parentPoint, u_camera, u_time,
-    u_detailA, u_detailB, u_detailRectA, u_detailRectB, u_detailWeights, blendedFlow, depth);
+    u_detailA, u_detailB, u_detailRectA, u_detailRectB, u_detailWeights, blendedFlow, depth, 0.0);
   vec4 child = samplePainting(u_childPaint, u_childFlow, childPoint, u_childCamera, u_childTime,
-    u_childDetailA, u_childDetailB, u_childDetailRectA, u_childDetailRectB, u_childDetailWeights, blendedFlow, 1.0-depth);
+    u_childDetailA, u_childDetailB, u_childDetailRectA, u_childDetailRectB, u_childDetailWeights, blendedFlow, 1.0-depth, 1.0);
   // Transport child colour along its flow before resolving its composition.
-  // Parent luminance retains its enlarged stroke geometry during this stage.
-  vec2 childUV = clamp(childPoint/u_resolution,0.0,1.0);
+  // Flow-aligned samples transfer chroma before restoring child luminance/contrast.
   vec2 spread = normalize(childFlow+vec2(.00001))*vec2(24.0)/u_resolution;
   vec3 pigment = (texture2D(u_childPaint,clamp(childUV-spread,0.0,1.0)).rgb +
                   texture2D(u_childPaint,childUV).rgb*2.0 +
                   texture2D(u_childPaint,clamp(childUV+spread,0.0,1.0)).rgb)*.25;
-  float lum = dot(parent.rgb,vec3(.299,.587,.114));
-  float childLum = max(.08,dot(pigment,vec3(.299,.587,.114)));
-  vec3 recoloured = clamp(pigment * clamp(lum/childLum,.55,1.65),0.0,1.0);
-  vec3 evolving = mix(parent.rgb,recoloured,depth*.72);
-  // Continuous structural formation across the FULL range, not a late threshold.
-  gl_FragColor = vec4(mix(evolving,child.rgb,depth),1.0);
+  // Remove parent contrast BEFORE revealing child contrast in this region.
+  // With these overlapping smooth ramps, simultaneous high-contrast ownership
+  // is tiny rather than the old 50/50 double exposure. This is pigment/structure
+  // reconstruction, NOT matched Bezier morphing, and does not blur the viewport.
+  // A palette carrier sampled from this SAME painting compresses structural
+  // contrast without brightening dark blue into a new saturated colour.
+  vec3 palette = (texture2D(u_childPaint,vec2(.23,.31)).rgb +
+                  texture2D(u_childPaint,vec2(.57,.25)).rgb +
+                  texture2D(u_childPaint,vec2(.81,.42)).rgb)/3.0;
+  vec3 underpaint = mix(palette,pigment,.30);
+  // Retain a small amount of the existing sharp replay/micro relief while
+  // suppressing large parent silhouettes; no new grain or extra LOD is created.
+  vec3 relief = clamp(parent.rgb-texture2D(u_paint,clamp(parentPoint/u_resolution,0.0,1.0)).rgb,-.035,.035);
+  vec3 evolving = mix(parent.rgb,underpaint+relief,colour);
+  gl_FragColor = vec4(mix(evolving,child.rgb,structure),1.0);
 }
 
 `;

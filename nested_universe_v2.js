@@ -309,18 +309,18 @@ function getPortalRenderV2() {
     if (!tr) return null;
     const anchorX = tr.camera.x + tr.star.x * tr.camera.zoom;
     const anchorY = tr.camera.y + tr.star.y * tr.camera.zoom;
-    // Begin with child brush detail, never a miniature framed painting.
-    const initialScale = 3;
+    // A virtual child paint plane approaches from behind the parent paint.
+    // BOTH scales increase for inward wheel depth. Composition is reconstructed
+    // in the shader; it is no longer revealed by shrinking a 3x child crop.
+    // Fix the endpoint's world point beneath the entry anchor for all depths.
     const endpoint = tr.childCamera;
-    const zoom = initialScale * Math.pow(endpoint.zoom / initialScale, tr.progress);
-    const settle = smoothPortalV2(tr.progress);
+    const scale = Math.exp(-Math.log(1 / .85) * (1 - tr.progress));
+    const zoom = endpoint.zoom * scale;
     return {
         child: tr.child, anchorX, anchorY,
-        // A child point under the star anchor stays there throughout the zoom.
-        // At progress 1 this becomes precisely the normal child camera.
         childCamera: { zoom,
-            x: anchorX * (1 - zoom) + settle * (endpoint.x - anchorX * (1 - endpoint.zoom)),
-            y: anchorY * (1 - zoom) + settle * (endpoint.y - anchorY * (1 - endpoint.zoom)) },
+            x: anchorX + (endpoint.x - anchorX) * scale,
+            y: anchorY + (endpoint.y - anchorY) * scale },
         progress: tr.progress
     };
 }
