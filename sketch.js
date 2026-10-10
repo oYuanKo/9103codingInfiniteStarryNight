@@ -56,21 +56,42 @@ function setup() {
 }
 
 function draw() {
+
   if (BRUSH_V2_PREVIEW) {
-    v2Camera.update(deltaTime);
+    background(12, 28, 60);
 
-    // Render the animated painting to its texture
-    const painting = drawBrushFlowShader(false, v2Camera);
+    if (nestedV2.transition) {
+      // Update entry (or reversal) first
+      updateStarEntryV2(deltaTime);
+    }
 
-    if (painting) {
-      background(12, 28, 60);
+    if (nestedV2.transition) {
+      const portalCamera = getStarEntryCameraV2();
 
-      // Camera controls the final displayed texture
-      v2Camera.draw(painting);
+      const painting = drawBrushFlowShader(
+        false,
+        portalCamera
+      );
+
+      if (painting) {
+        drawStarEntryV2(painting, portalCamera);
+      }
+    } else {
+      v2Camera.update(deltaTime);
+
+      const painting = drawBrushFlowShader(
+        false,
+        v2Camera
+      );
+
+      if (painting) {
+        v2Camera.draw(painting);
+      }
     }
 
     return;
   }
+
   background(0);
 
   switch (currentState) {
@@ -417,6 +438,8 @@ function keyPressed() {
     const seed = testSeeds[key.toLowerCase()];
 
     if (seed !== undefined) {
+      resetNestedV2();
+      
       universeSeed = seed;
       initBrushV2(seed);
       rebuildBrushFlowMap();
@@ -468,21 +491,35 @@ function loadTestUniverse(seed) {
 
 
 function mouseWheel(event) {
+
   if (BRUSH_V2_PREVIEW) {
     if (
-      v2Camera &&
-      mouseX >= 0 && mouseX <= width &&
-      mouseY >= 0 && mouseY <= height
+      !v2Camera ||
+      mouseX < 0 || mouseX > width ||
+      mouseY < 0 || mouseY > height
     ) {
-      v2Camera.zoomAt(
-        event.delta,
-        mouseX,
-        mouseY
-      );
+      return false;
     }
+
+    // Reverse or continue an active transition
+    if (handleStarEntryWheelV2(event.delta)) {
+      return false;
+    }
+
+    // Zooming in beyond the normal limit on a star
+    if (
+      event.delta < 0 &&
+      tryEnterStarV2(mouseX, mouseY)
+    ) {
+      return false;
+    }
+
+    // Otherwise keep normal cursor-centred zoom
+    v2Camera.zoomAt(event.delta, mouseX, mouseY);
 
     return false;
   }
+
   // Ignore scroll on debug GUI
   if (
     event.target &&

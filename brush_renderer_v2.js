@@ -269,13 +269,15 @@ function paintV2Stroke(g, x, y, angle, len, weight, colour, alpha = 255) {
 
 
 // Generate the complete painted world
-function initBrushV2(seed) {
+function initBrushV2(seed, preservePrevious = false) {
     randomSeed(seed);
     noiseSeed(seed);
 
     // Release previous buffers if regenerating
-    if (brushV2.base) brushV2.base.remove();
-    if (brushV2.motion) brushV2.motion.remove();
+    if (!preservePrevious) {
+        if (brushV2.base) brushV2.base.remove();
+        if (brushV2.motion) brushV2.motion.remove();
+    }
 
     brushV2.base = createGraphics(width, height);
     brushV2.motion = createGraphics(width, height);
