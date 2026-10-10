@@ -439,7 +439,7 @@ function keyPressed() {
 
     if (seed !== undefined) {
       resetNestedV2();
-      
+
       universeSeed = seed;
       initBrushV2(seed);
       rebuildBrushFlowMap();
@@ -509,7 +509,7 @@ function mouseWheel(event) {
     // Zooming in beyond the normal limit on a star
     if (
       event.delta < 0 &&
-      tryEnterStarV2(mouseX, mouseY)
+      tryEnterStarV2(mouseX, mouseY, event.delta)
     ) {
       return false;
     }
