@@ -246,7 +246,7 @@ function initBrushFlowShader() {
 
 // Create a small texture encoding our EXISTING
 // Perlin + Vortex directions
-function rebuildBrushFlowMap() {
+function* rebuildBrushFlowMapSteps() {
     const gridSize = 6;
     const cols = Math.ceil(width / gridSize);
     const rows = Math.ceil(height / gridSize);
@@ -318,9 +318,16 @@ function rebuildBrushFlowMap() {
 
             brushFlowMap.pixels[index + 3] = 255;
         }
+        yield;
     }
 
     brushFlowMap.updatePixels();
+}
+
+function rebuildBrushFlowMap() {
+    for (const _ of rebuildBrushFlowMapSteps()) {
+        // Preserve synchronous compatibility
+    }
 }
 
 // Render the animated painting

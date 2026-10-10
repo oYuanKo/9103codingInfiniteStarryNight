@@ -269,7 +269,7 @@ function paintV2Stroke(g, x, y, angle, len, weight, colour, alpha = 255) {
 
 
 // Generate the complete painted world
-function initBrushV2(seed, preservePrevious = false) {
+function* buildBrushV2Steps(seed, preservePrevious = false) {
     randomSeed(seed);
     noiseSeed(seed);
 
@@ -313,6 +313,7 @@ function initBrushV2(seed, preservePrevious = false) {
                 colour
             );
         }
+        yield;
     }
 
     // Pass 2: finer surface texture
@@ -332,11 +333,14 @@ function initBrushV2(seed, preservePrevious = false) {
             colour,
             random(110, 190)
         );
+        if (i % 100 === 99) {
+            yield;
+        }
     }
 
     brushV2.stars = generateBrushV2Stars();
     paintAllBrushV2Stars(brushV2.base);
-    paintBrushMountains(brushV2.base);
+    yield* paintBrushMountainsSteps(brushV2.base);
 
     brushV2.village = generateVillageLayout();
     paintBrushVillage(brushV2.base);
@@ -361,9 +365,23 @@ function initBrushV2(seed, preservePrevious = false) {
             phase: random(1000),
             speedPhase: random(1000)
         });
+
+        yield;
     }
 
     console.log("Brush V2 generated:", seed);
+}
+
+function initBrushV2(seed, preservePrevious = false) {
+    const steps = buildBrushV2Steps(
+        seed,
+        preservePrevious
+    );
+
+    // Preserve the existing synchronous behaviour
+    for (const _ of steps) {
+        // Consume all generation steps
+    }
 }
 
 // Render the layered painting

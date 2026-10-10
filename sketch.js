@@ -59,6 +59,11 @@ function draw() {
 
   if (BRUSH_V2_PREVIEW) {
     background(12, 28, 60);
+    if (!nestedV2.transition) {
+      maybePreloadChildV2();
+    }
+
+    updateChildPreloadV2();
 
     if (nestedV2.transition) {
       // Update entry (or reversal) first

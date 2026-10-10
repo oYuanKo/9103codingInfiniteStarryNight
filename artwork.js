@@ -41,7 +41,7 @@ function mountainRidgeY(x, layer) {
 }
 
 // Paint mountains entirely with brushstrokes
-function paintBrushMountains(g) {
+function* paintBrushMountainsSteps(g) {
     for (let layer = 0; layer < 2; layer++) {
         const palette = MOUNTAIN_PALETTES[layer];
         const spacing = 8;
@@ -102,6 +102,8 @@ function paintBrushMountains(g) {
                     alpha
                 );
             }
+
+            yield;
         }
 
         // Fine directional texture
@@ -130,7 +132,15 @@ function paintBrushMountains(g) {
                 random(palette),
                 random(75, 150)
             );
+
+            if (i % 100 === 99) yield;
         }
+    }
+}
+
+function paintBrushMountains(g) {
+    for (const _ of paintBrushMountainsSteps(g)) {
+        // Complete the painting synchronously
     }
 }
 

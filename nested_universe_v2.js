@@ -1,7 +1,7 @@
-
 const nestedV2 = {
     transition: null,
-    parentStack: []
+    parentStack: [],
+    preload: null
 };
 
 // Capture all data needed to revisit a painted universe
@@ -46,6 +46,104 @@ function childSeedV2(parentSeed, starId) {
 
     return 100000 + (hash % 900000);
 }
+
+
+function clearChildPreloadV2() {
+    const job = nestedV2.preload;
+    if (!job) return;
+
+    if (job.world) {
+        disposeWorldV2(job.world);
+    }
+
+    nestedV2.preload = null;
+}
+
+function startChildPreloadV2(star) {
+    if (!star || nestedV2.transition) return;
+
+    const key = `${universeSeed}:${star.id}`;
+
+    if (nestedV2.preload?.key === key) {
+        return;
+    }
+
+    clearChildPreloadV2();
+
+    const seed = childSeedV2(universeSeed, star.id);
+
+    nestedV2.preload = {
+        key,
+        seed,
+        phase: "painting",
+        steps: buildBrushV2Steps(seed, true),
+        world: null,
+        ready: false,
+        startedAt: performance.now()
+    };
+}
+
+// Start preparing a child before reaching maximum zoom
+function maybePreloadChildV2() {
+    if (nestedV2.transition) return;
+    if (nestedV2.parentStack.length > 0) return;
+    if (!brushCursor.inside) return;
+
+    if (v2Camera.targetZoom < 1.6) return;
+
+    const star = findZoomStarV2(mouseX, mouseY);
+
+    if (star) {
+        startChildPreloadV2(star);
+    }
+}
+
+// Execute a limited amount of generation per frame
+function updateChildPreloadV2() {
+    const job = nestedV2.preload;
+
+    if (!job || job.ready) return;
+
+    const activeWorld = captureWorldV2();
+
+    // Budget: approximately 4ms per frame
+    const deadline = performance.now() + 4;
+
+    try {
+        if (job.world) {
+            activateWorldV2(job.world);
+        }
+
+        do {
+            const result = job.steps.next();
+
+            job.world = captureWorldV2(job.seed);
+
+            if (result.done) {
+                if (job.phase === "painting") {
+                    job.phase = "flowMap";
+                    job.steps = rebuildBrushFlowMapSteps();
+                } else {
+                    job.ready = true;
+
+                    console.log(
+                        "Child preloaded:",
+                        job.seed,
+                        "Elapsed:",
+                        (performance.now() - job.startedAt).toFixed(1),
+                        "ms"
+                    );
+
+                    break;
+                }
+            }
+        } while (performance.now() < deadline);
+    } finally {
+        // Restore the active universe after every batch
+        activateWorldV2(activeWorld);
+    }
+}
+
 
 // Generate another universe while keeping the parent
 function generateChildWorldV2(seed) {
@@ -112,7 +210,22 @@ function tryEnterStarV2(sx, sy, delta = -100) {
 
     const parent = captureWorldV2();
     const seed = childSeedV2(parent.seed, star.id);
-    const child = generateChildWorldV2(seed);
+    const key = `${parent.seed}:${star.id}`;
+
+    const job = nestedV2.preload;
+
+    if (!job || job.key !== key || !job.ready) {
+        // Start or continue preparing the selected star
+        startChildPreloadV2(star);
+
+        // Consume this wheel event without blocking
+        return true;
+    }
+
+    const child = job.world;
+
+    // Transfer ownership to the transition
+    nestedV2.preload = null;
 
 
     const startZoom = v2Camera.zoom;
@@ -327,6 +440,7 @@ function drawStarEntryV2(parentTexture, portalCamera) {
 
 // Used when explicitly loading a different test seed
 function resetNestedV2() {
+    clearChildPreloadV2();
     if (nestedV2.transition) {
         disposeWorldV2(nestedV2.transition.child);
         nestedV2.transition = null;
