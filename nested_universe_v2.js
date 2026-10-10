@@ -240,11 +240,10 @@ function beginPortalV2(nav) {
     const start = nav.direction === 'in' ? 0 : 1;
     nestedV2.transition = { ...nav, ...geometry, progress: start,
         targetProgress: constrain(start + nav.distance / geometry.range, 0, 1),
-        parent: nav.edge.parent.world, child: nav.edge.child.world };
+        parent: nav.edge.parent.world, child: nav.edge.child.world,
+        childCamera: nav.direction === 'out' ? nav.originCamera : stillCameraV2() };
     nestedV2.pending = null;
     activateWorldV2(nav.edge.parent.world);
-    brushCursor.active = 0;
-    brushCursor.wasInside = false;
 }
 
 function handleStarEntryWheelV2(delta) {
@@ -273,8 +272,6 @@ function finishPortalV2(toChild) {
     nestedV2.current = node;
     node.used = ++nestedV2.clock;
     nestedV2.transition = null;
-    brushCursor.active = 0;
-    brushCursor.wasInside = false;
     trimWorldCacheV2();
 }
 
@@ -304,22 +301,32 @@ function getStarEntryCameraV2() {
     };
 }
 
-function drawStarEntryV2(parentTexture, portalCamera) {
+// One spatial mapping in both directions; no clock-driven reveal or full-screen fade.
+function getPortalRenderV2() {
     const tr = nestedV2.transition;
-    if (!tr) return;
-    push();
-    translate(portalCamera.x, portalCamera.y);
-    scale(portalCamera.zoom);
-    image(parentTexture, 0, 0, width, height);
-    pop();
-    const reveal = smoothPortalV2((tr.progress - 0.62) / 0.34);
-    if (reveal > 0) {
-        push();
-        tint(255, reveal * 255);
-        image(tr.child.base, 0, 0, width, height);
-        noTint();
-        pop();
-    }
+    if (!tr) return null;
+    const camera = getStarEntryCameraV2();
+    const anchorX = tr.camera.x + tr.star.x * tr.camera.zoom;
+    const anchorY = tr.camera.y + tr.star.y * tr.camera.zoom;
+    const initialScale = Math.min(0.65, tr.star.radius * tr.camera.zoom / (Math.min(width, height) * 0.3));
+    const endpoint = tr.childCamera;
+    const zoom = initialScale * Math.pow(endpoint.zoom / initialScale, tr.progress);
+    const settle = smoothPortalV2(tr.progress);
+    return {
+        child: tr.child, anchorX, anchorY,
+        // A child point under the star anchor stays there throughout the zoom.
+        // At progress 1 this becomes precisely the normal child camera.
+        childCamera: { zoom,
+            x: anchorX * (1 - zoom) + settle * (endpoint.x - anchorX * (1 - endpoint.zoom)),
+            y: anchorY * (1 - zoom) + settle * (endpoint.y - anchorY * (1 - endpoint.zoom)) },
+        radius: tr.star.radius * camera.zoom * (0.48 + 0.77 * smoothPortalV2(tr.progress)),
+        opening: smoothPortalV2(tr.progress / 0.22)
+    };
+}
+
+function drawStarEntryV2() {
+    if (!nestedV2.transition) return;
+    drawBrushFlowShader(true, getStarEntryCameraV2(), getPortalRenderV2());
 }
 
 function resetNestedV2() {

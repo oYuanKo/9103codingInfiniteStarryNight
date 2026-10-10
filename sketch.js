@@ -71,16 +71,7 @@ function draw() {
     }
 
     if (nestedV2.transition) {
-      const portalCamera = getStarEntryCameraV2();
-
-      const painting = drawBrushFlowShader(
-        false,
-        portalCamera
-      );
-
-      if (painting) {
-        drawStarEntryV2(painting, portalCamera);
-      }
+      drawStarEntryV2();
     } else {
       v2Camera.update(deltaTime);
 
@@ -90,7 +81,7 @@ function draw() {
       );
 
       if (painting) {
-        v2Camera.draw(painting);
+        image(painting, 0, 0, width, height);
       }
     }
 
