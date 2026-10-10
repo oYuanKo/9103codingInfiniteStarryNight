@@ -82,3 +82,6 @@ git push
 - Keep individual features in separate `.js` files where possible.
 - Use Pull Requests to merge completed features into `main`.
 - Communicate before editing shared files such as `sketch.js`.
+
+## Use of AI Statement:
+ChatGPT (OpenAI) and Codex were used to improve code quality; help with difficult features;
