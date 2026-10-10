@@ -324,13 +324,16 @@ function rebuildBrushFlowMap() {
 }
 
 // Render the animated painting
-function drawBrushFlowShader() {
+function drawBrushFlowShader(present = true, camera = null) {
     if (!brushV2.base || !brushFlowProgram) return;
 
     // Compare with the original painting
     if (!brushFlowSettings.enabled) {
-        image(brushV2.base, 0, 0);
-        return;
+        if (present) {
+            image(brushV2.base, 0, 0);
+        }
+
+        return brushV2.base;
     }
 
     if (!brushFlowSettings.paused) {
@@ -371,20 +374,27 @@ function drawBrushFlowShader() {
     );
 
 
+    const cameraZoom = camera ? camera.zoom : 1;
+
+    const worldCursor = camera
+        ? camera.screenToWorld(brushCursor.x, brushCursor.y)
+        : { x: brushCursor.x, y: brushCursor.y };
+
     brushFlowProgram.setUniform(
         "u_cursor",
-        [brushCursor.x, brushCursor.y]
+        [worldCursor.x, worldCursor.y]
     );
 
     brushFlowProgram.setUniform(
         "u_cursorRadius",
-        brushFlowSettings.cursorRadius
+        brushFlowSettings.cursorRadius / cameraZoom
     );
 
     brushFlowProgram.setUniform(
         "u_cursorStrength",
-        brushFlowSettings.cursorStrength
+        brushFlowSettings.cursorStrength / cameraZoom
     );
+
 
     brushFlowProgram.setUniform(
         "u_cursorActive",
@@ -395,7 +405,10 @@ function drawBrushFlowShader() {
 
     brushFlowProgram.setUniform(
         "u_cursorVelocity",
-        [brushCursor.vx, brushCursor.vy]
+        [
+            brushCursor.vx / cameraZoom,
+            brushCursor.vy / cameraZoom
+        ]
     );
 
     brushFlowProgram.setUniform(
@@ -407,5 +420,9 @@ function drawBrushFlowShader() {
     brushFlowBuffer.plane(width, height);
 
     // Display GPU output on the normal 2D canvas
-    image(brushFlowBuffer, 0, 0);
+    if (present) {
+        image(brushFlowBuffer, 0, 0);
+    }
+
+    return brushFlowBuffer;
 }

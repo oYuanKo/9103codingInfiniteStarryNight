@@ -25,6 +25,7 @@ let currentState = STATES.NIGHT;
 let universeSeed = 12;
 let universeCount = 1;
 let inputMechanic;
+let v2Camera = null;
 
 function setup() {
   const canvas = createCanvas(800, 600);
@@ -46,6 +47,8 @@ function setup() {
   if (BRUSH_V2_PREVIEW) {
     initBrushV2(universeSeed);
     initBrushFlowShader();
+
+    v2Camera = new ZoomCameraV2();
   } else {
     generateUniverse(universeSeed);
     initDebugGUI();
@@ -54,7 +57,18 @@ function setup() {
 
 function draw() {
   if (BRUSH_V2_PREVIEW) {
-    drawBrushFlowShader();
+    v2Camera.update(deltaTime);
+
+    // Render the animated painting to its texture
+    const painting = drawBrushFlowShader(false, v2Camera);
+
+    if (painting) {
+      background(12, 28, 60);
+
+      // Camera controls the final displayed texture
+      v2Camera.draw(painting);
+    }
+
     return;
   }
   background(0);
@@ -407,6 +421,8 @@ function keyPressed() {
       initBrushV2(seed);
       rebuildBrushFlowMap();
       brushFlowTime = 0;
+
+      v2Camera.reset();
     }
 
     if (key === "c" || key === "C") {
@@ -420,9 +436,13 @@ function keyPressed() {
           : "OFF"
       );
     }
+    if (key === "r" || key === "R") {
+      v2Camera.reset();
+    }
 
     return;
   }
+
   if (key === "1") changeState(STATES.NIGHT);
   if (key === "2") changeState(STATES.SPACE);
   if (key === "q" || key === "Q") loadTestUniverse(12);
@@ -449,6 +469,18 @@ function loadTestUniverse(seed) {
 
 function mouseWheel(event) {
   if (BRUSH_V2_PREVIEW) {
+    if (
+      v2Camera &&
+      mouseX >= 0 && mouseX <= width &&
+      mouseY >= 0 && mouseY <= height
+    ) {
+      v2Camera.zoomAt(
+        event.delta,
+        mouseX,
+        mouseY
+      );
+    }
+
     return false;
   }
   // Ignore scroll on debug GUI
