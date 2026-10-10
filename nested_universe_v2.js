@@ -10,7 +10,7 @@ function captureWorldV2(seed = universeSeed) {
 
 function activateWorldV2(world) {
     universeSeed = world.seed;
-    for (const key of ['base', 'motion', 'marks', 'stars', 'village', 'cypress', 'time']) {
+    for (const key of ['base', 'motion', 'marks', 'stars', 'village', 'cypress', 'time', 'detailSource']) {
         brushV2[key] = world[key];
     }
     brushFlowMap = world.flowMap;
@@ -70,6 +70,8 @@ function outerEdgeV2() {
 
 function disposeWorldV2(world) {
     if (!world) return;
+    disposeBrushDetailsV2(world.detailSource);
+    world.detailSource = null;
     for (const key of ['base', 'motion', 'flowMap']) {
         const resource = world[key];
         if (!resource) continue;
@@ -121,7 +123,7 @@ function prepareWorldV2(node) {
     clearChildPreloadV2();
     nestedV2.preload = { node, phase: 'painting', steps: buildBrushV2Steps(node.seed, true),
         world: { seed: node.seed, base: null, motion: null, marks: [], stars: [],
-            village: null, cypress: null, time: 0, flowMap: null, flowTime: 0 } };
+            village: null, cypress: null, time: 0, flowMap: null, flowTime: 0, detailSource: null } };
 }
 
 function startChildPreloadV2(star) {
@@ -301,14 +303,14 @@ function getStarEntryCameraV2() {
     };
 }
 
-// One spatial mapping in both directions; no clock-driven reveal or full-screen fade.
+// Reversible brush transformation. Progress controls ownership, never elapsed time.
 function getPortalRenderV2() {
     const tr = nestedV2.transition;
     if (!tr) return null;
-    const camera = getStarEntryCameraV2();
     const anchorX = tr.camera.x + tr.star.x * tr.camera.zoom;
     const anchorY = tr.camera.y + tr.star.y * tr.camera.zoom;
-    const initialScale = Math.min(0.65, tr.star.radius * tr.camera.zoom / (Math.min(width, height) * 0.3));
+    // Begin with child brush detail, never a miniature framed painting.
+    const initialScale = 3;
     const endpoint = tr.childCamera;
     const zoom = initialScale * Math.pow(endpoint.zoom / initialScale, tr.progress);
     const settle = smoothPortalV2(tr.progress);
@@ -319,8 +321,7 @@ function getPortalRenderV2() {
         childCamera: { zoom,
             x: anchorX * (1 - zoom) + settle * (endpoint.x - anchorX * (1 - endpoint.zoom)),
             y: anchorY * (1 - zoom) + settle * (endpoint.y - anchorY * (1 - endpoint.zoom)) },
-        radius: tr.star.radius * camera.zoom * (0.48 + 0.77 * smoothPortalV2(tr.progress)),
-        opening: smoothPortalV2(tr.progress / 0.22)
+        progress: tr.progress
     };
 }
 
@@ -337,6 +338,7 @@ function resetNestedV2() {
     nestedV2.current = nestedV2.transition = nestedV2.pending = null;
     // initBrushV2 must not remove an already disposed active canvas a second time.
     brushV2.base = brushV2.motion = brushFlowMap = null;
+    brushV2.detailSource = null;
     brushCursor.active = 0;
     brushCursor.wasInside = false;
 }

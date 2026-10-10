@@ -108,3 +108,72 @@ camera boundary. It saves ignored `tests/step6d-*.png` screenshots and reports
 headless frame intervals. These short local samples are not a performance
 guarantee for other GPUs or a long-duration memory soak test. The original
 800x600 output resolution and cooperative generation-budget limits remain.
+
+## Step 6D.1: exact brush replay and painterly ownership
+
+This supersedes the Step 6D procedural-grain LOD, circular aperture, and bounded
+child lens described above. It preserves the Step 6C graph, wheel target,
+preload jobs, caches, seeds and controls.
+
+### Actual geometry at zoom
+
+- `paintV2Stroke()` records every static brush stroke: position, angle, length,
+  width, RGB, opacity, bounds and original drawing order. This covers sky,
+  stars/halos, mountains, village and cypress. Records do not call random/noise
+  or modify the painted output. Completed records use Float64Array; a 64-unit
+  spatial grid finds visible strokes. Seed 12 has 22,858 strokes (2.27 MiB of
+  numeric records plus its spatial index).
+- `brush_detail_v2.js` replays the original Bezier body and highlight into local
+  1536x1152 2D textures at 3x, 6x, 12x and successive doubled scales. Selection
+  preserves global paint order, conservative bounds include round caps, and
+  overscan covers flow/cursor displacement. It is not an enlarged bitmap,
+  sharpening filter, nearest-neighbour sampling or added grain.
+- One job advances per frame under a cooperative 2 ms paint budget. Existing
+  detail remains visible while replacement textures are built. Only completed
+  textures are published, with a 140 ms asset-refinement blend; this blend never
+  changes navigation progress. No brushes are rebuilt on settled warm frames.
+- A global cap of five detail textures INCLUDES the in-progress job, previous
+  refinement textures and inactive cached views: 33.75 MiB RGBA texture payload
+  maximum, plus approximately the same amount of 2D backing storage and browser
+  overhead. World disposal/seed reset also deletes their detail GPU entries.
+  This is an additional detail-cache bound, not a cap on all ancestor worlds.
+  Recording adds CPU memory per resident world; ancestor retention is unchanged.
+
+### Painterly world transformation
+
+Early zoom (first 38% of the transition) contains only parent brushwork. Later,
+overlapping elongated footprints follow the local flow and transfer patches of
+paint to the child. There is no radius, circle boundary or independent child
+frame. Flow directions also blend through the middle. The child starts as a
+crop rather than a miniature painting and continuously resolves to its ordinary
+camera. Both paths are functions of the same scroll-controlled depth, so reverse
+scroll retraces them. The old shader-grain layer has been removed.
+
+Global flow is capped in screen pixels at deep zoom (6 px at default strength,
+or the explicitly selected strength if greater). Cursor displacement remains
+screen-scaled. This keeps the existing flow at ordinary scale without multiplying
+a 5 px wobble into a 60 px distortion at 12x.
+
+### Verification and limits
+
+```sh
+node tests/navigation.browser.cjs
+node tests/portal.browser.cjs
+node tests/detail.browser.cjs
+```
+
+The detail suite compares the complete replay against the original base painting,
+compares 3x/6x/12x crops against direct geometry rendering, and saves paired
+`tests/step6d1-sharp-*.png` / `tests/step6d1-cache-*.png` images plus eight transition
+frames. It checks stable-depth pixels, early parent-only rendering, reversal,
+endpoint matching, bounded cache churn, seed-reset cleanup, warm GPU-readback
+frame time and cold detail-request time. The portal suite disables detail to
+isolate its endpoint/cursor tests; the detail suite tests the combined path.
+
+Texture allocation, spatial lookup and initial GPU upload are indivisible and
+may exceed the 2 ms cooperative budget. Rapid movement can briefly use the old
+cache while sharper detail arrives. This replays the original geometry: very
+large strokes remain large, though their edges and highlights are now resolved.
+The transition is still a 2D paint-region blend, not a one-to-one morph of each
+parent stroke into a child stroke. Short desktop tests are not a long-duration
+memory soak or a guarantee for integrated/mobile GPUs.

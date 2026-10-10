@@ -10,8 +10,6 @@ const brushFlowSettings = {
     cursorStrength: 5.5
 };
 
-// Screen-space microtexture only; does not alter the seeded painting or palette.
-const brushLODSettings = { enabled: true, strength: 0.035 };
 let brushFlowBuffer = null;
 let brushFlowProgram = null;
 let brushFlowMap = null;
@@ -125,43 +123,64 @@ uniform sampler2D u_childPaint;
 uniform sampler2D u_childFlow;
 uniform float u_childTime;
 uniform float u_seed;
-uniform float u_childSeed;
 uniform float u_flowEnabled;
-uniform float u_lodStrength;
+uniform sampler2D u_detailA;
+uniform sampler2D u_detailB;
+uniform sampler2D u_childDetailA;
+uniform sampler2D u_childDetailB;
+uniform vec4 u_detailRectA;
+uniform vec4 u_detailRectB;
+uniform vec4 u_childDetailRectA;
+uniform vec4 u_childDetailRectB;
+uniform vec4 u_detailWeights;
+uniform vec4 u_childDetailWeights;
+uniform float u_progress;
 uniform float u_portalActive;
-uniform vec4 u_portal; // Screen anchor xy, radius, opening amount.
 
 float pigmentHash(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 }
-float pigmentNoise(vec2 p) {
-  vec2 i = floor(p), f = fract(p);
-  f = f * f * (3.0 - 2.0 * f);
-  return mix(mix(pigmentHash(i), pigmentHash(i + vec2(1, 0)), f.x),
-             mix(pigmentHash(i + vec2(0, 1)), pigmentHash(i + vec2(1, 1)), f.x), f.y);
+// Overlapping elongated brush footprints, not polar coordinates or a noisy circle.
+// Project LOCAL offsets, never absolute world positions onto a rotating flow field.
+float brushOwnership(vec2 point, vec2 direction, vec2 seed) {
+  vec2 cell = floor(point / 8.0);
+  float sum = 0.0, weights = 0.0;
+  for (int y = -2; y <= 2; y++) {
+    for (int x = -2; x <= 2; x++) {
+      vec2 id = cell + vec2(float(x), float(y));
+      float value = pigmentHash(id + seed);
+      vec2 centre = (id + 0.5 + vec2(value - 0.5, pigmentHash(id.yx + seed) - 0.5) * 0.5) * 8.0;
+      vec2 q = point - centre;
+      vec2 stroke = vec2(dot(q, direction) / 8.0, dot(q, vec2(-direction.y, direction.x)) / 2.3);
+      float weight = exp(-dot(stroke, stroke));
+      sum += value * weight;
+      weights += weight;
+    }
+  }
+  return sum / max(weights, 0.00001);
 }
-// A bounded lens keeps the small child inside its own painting, without
-// repeating/mirroring edge content. It becomes the ordinary camera at zoom 1.
-vec2 cameraPoint(vec2 screen, vec3 camera) {
-  if (camera.z >= 1.0) return (screen - camera.xy) / camera.z;
-  vec2 focus = clamp(u_portal.xy, vec2(1.0), u_resolution - 1.0);
-  vec2 d = screen - focus;
-  vec2 extent = mix(focus, u_resolution - focus, step(vec2(0.0), d));
-  vec2 denominator = camera.z + (1.0 - camera.z) * abs(d) / extent;
-  vec2 pan = (camera.xy - (1.0 - camera.z) * focus) / camera.z;
-  return focus + d / denominator - pan;
+
+vec2 cameraPoint(vec2 screen, vec3 camera) { return (screen - camera.xy) / camera.z; }
+vec2 cameraScale(vec2 screen, vec3 camera) { return vec2(camera.z); }
+
+vec4 patchPaint(vec4 fallback, sampler2D patch, vec4 rect, vec2 point, float enabled) {
+  vec2 uv = (point - rect.xy) / rect.zw;
+  vec2 edge = min(uv, 1.0 - uv) * vec2(1536.0, 1152.0);
+  float coverage = smoothstep(0.0, 12.0, min(edge.x, edge.y)) * enabled;
+  return mix(fallback, texture2D(patch, clamp(uv, 0.0, 1.0)), coverage);
 }
-vec2 cameraScale(vec2 screen, vec3 camera) {
-  if (camera.z >= 1.0) return vec2(camera.z);
-  vec2 focus = clamp(u_portal.xy, vec2(1.0), u_resolution - 1.0);
-  vec2 d = screen - focus;
-  vec2 extent = mix(focus, u_resolution - focus, step(vec2(0.0), d));
-  vec2 denominator = camera.z + (1.0 - camera.z) * abs(d) / extent;
-  return denominator * denominator / camera.z;
+vec4 detailedPaint(sampler2D paint, sampler2D a, sampler2D b,
+                   vec4 rectA, vec4 rectB, vec4 weights, vec2 uv) {
+  vec4 base = texture2D(paint, uv);
+  vec4 oldPaint = patchPaint(base, a, rectA, uv * u_resolution, weights.x);
+  vec4 newPaint = patchPaint(oldPaint, b, rectB, uv * u_resolution, weights.y);
+  return mix(base, mix(oldPaint, newPaint, weights.z), weights.w);
 }
 
 vec4 samplePainting(sampler2D paint, sampler2D flow, vec2 point,
-                    vec3 camera, float time, float seed) {
+                    vec3 camera, float time,
+                    sampler2D detailA, sampler2D detailB, vec4 rectA, vec4 rectB, vec4 weights,
+                    vec2 morphDirection, float morph) {
   vec2 uv = clamp(point / u_resolution, vec2(0.0), vec2(1.0));
   vec2 screen = vTexCoord * u_resolution;
   vec2 localScale = cameraScale(screen, camera);
@@ -177,6 +196,8 @@ vec4 samplePainting(sampler2D paint, sampler2D flow, vec2 point,
   } else {
     direction = vec2(0.0);
   }
+
+  direction = normalize(mix(direction, morphDirection, morph) + vec2(0.00001));
 
   // A travelling phase along the local direction
   vec2 pixelPosition = uv * u_resolution;
@@ -247,9 +268,11 @@ vec4 samplePainting(sampler2D paint, sampler2D flow, vec2 point,
 
 
 
-  // Combine global flow and local cursor influence
+  // Cap global deformation in screen space; 12x must not turn a 5px flow into 60px.
+  vec2 globalOffset = direction * displacement;
+  globalOffset *= min(1.0, max(6.0, u_strength) / max(length(globalOffset * localScale), 0.001));
   vec2 displacedUV = uv -
-    (direction * displacement + cursorOffset) * u_flowEnabled
+    (globalOffset + cursorOffset) * u_flowEnabled
     / u_resolution;
 
   displacedUV = clamp(
@@ -258,48 +281,50 @@ vec4 samplePainting(sampler2D paint, sampler2D flow, vec2 point,
     vec2(0.999)
   );
 
-  // Sample the original painted texture
-  vec4 colour = texture2D(paint, displacedUV);
-  // Two world-anchored pigment scales fade in continuously with magnification.
-  // Analytic pixel footprints suppress the finer octave until it is resolvable.
-  float detail = smoothstep(1.6, 4.5, camera.z) * u_lodStrength;
-  vec2 p = displacedUV * u_resolution;
-  vec2 grain = vec2(dot(p, direction), dot(p, vec2(-direction.y, direction.x)));
-  vec2 offset = vec2(mod(seed, 997.0), mod(seed, 577.0));
-  float ridges = pigmentNoise(grain * vec2(0.65, 2.5) + offset) - 0.5;
-  float fine = (pigmentNoise(grain * vec2(1.3, 5.0) + offset) - 0.5)
-               * smoothstep(5.0, 10.0, camera.z);
-  colour.rgb *= 1.0 + detail * (ridges + 0.5 * fine) * (0.3 + 0.7 * localStrength);
-  return colour;
+  return detailedPaint(paint, detailA, detailB, rectA, rectB, weights, displacedUV);
 }
 
 void main() {
   vec2 screen = vTexCoord * u_resolution;
   vec2 parentPoint = cameraPoint(screen, u_camera);
-  if (u_portalActive < 0.5) {
-    gl_FragColor = samplePainting(u_paint, u_flowMap, parentPoint, u_camera, u_time, u_seed);
+  vec2 childPoint = cameraPoint(screen, u_childCamera);
+  // Early zoom belongs entirely to the parent. Later, flow-aligned paint
+  // regions change ownership across the canvas: no radial aperture or frame.
+  float phase = smoothstep(0.38, 0.96, u_progress) * u_portalActive;
+  if (phase <= 0.0) {
+    gl_FragColor = samplePainting(u_paint, u_flowMap, parentPoint, u_camera, u_time,
+      u_detailA, u_detailB, u_detailRectA, u_detailRectB, u_detailWeights, vec2(0.0), 0.0);
     return;
   }
-  // The boundary is fixed in parent-world coordinates, never animated by time.
-  // Elongated, overlapping noise bands make a feathered painted aperture.
-  vec2 q = (screen - u_portal.xy) / u_camera.z;
-  float angle = atan(q.y, q.x);
-  vec2 roughPoint = q * vec2(0.31, 0.65) + vec2(mod(u_seed, 997.0));
-  float rough = (pigmentNoise(roughPoint) - 0.5) * 0.08
-              + sin(angle * 17.0 + pigmentNoise(q * 0.12) * 4.0) * 0.025;
-  float distance = length(screen - u_portal.xy) / max(u_portal.z, 0.001);
-  float mask = (1.0 - smoothstep(0.80 + rough, 1.04 + rough, distance)) * u_portal.w;
-  vec2 childPoint = cameraPoint(screen, u_childCamera);
+  if (phase >= 1.0) {
+    gl_FragColor = samplePainting(u_childPaint, u_childFlow, childPoint, u_childCamera, u_childTime,
+      u_childDetailA, u_childDetailB, u_childDetailRectA, u_childDetailRectB, u_childDetailWeights, vec2(0.0), 0.0);
+    return;
+  }
+  vec2 parentFlow = texture2D(u_flowMap, clamp(parentPoint/u_resolution, 0.0, 1.0)).rg * 2.0 - 1.0;
+  vec2 childFlow = texture2D(u_childFlow, clamp(childPoint/u_resolution, 0.0, 1.0)).rg * 2.0 - 1.0;
+  vec2 direction = normalize(parentFlow + vec2(0.00001));
+  vec2 seed = vec2(mod(u_seed, 997.0), mod(u_seed, 577.0));
+  float stroke = brushOwnership(parentPoint, direction, seed);
+  float threshold = 0.18 + stroke * 0.64;
+  float mask = smoothstep(threshold - 0.10, threshold + 0.10, phase);
+  vec2 blendedFlow = normalize(mix(parentFlow, childFlow, phase) + vec2(0.00001));
+  float morph = phase * (1.0 - phase) * 1.4;
   if (mask <= 0.0) {
-    gl_FragColor = samplePainting(u_paint, u_flowMap, parentPoint, u_camera, u_time, u_seed);
+    gl_FragColor = samplePainting(u_paint, u_flowMap, parentPoint, u_camera, u_time,
+      u_detailA, u_detailB, u_detailRectA, u_detailRectB, u_detailWeights, blendedFlow, morph);
   } else if (mask >= 1.0) {
-    gl_FragColor = samplePainting(u_childPaint, u_childFlow, childPoint, u_childCamera, u_childTime, u_childSeed);
+    gl_FragColor = samplePainting(u_childPaint, u_childFlow, childPoint, u_childCamera, u_childTime,
+      u_childDetailA, u_childDetailB, u_childDetailRectA, u_childDetailRectB, u_childDetailWeights, blendedFlow, morph);
   } else {
     gl_FragColor = mix(
-      samplePainting(u_paint, u_flowMap, parentPoint, u_camera, u_time, u_seed),
-      samplePainting(u_childPaint, u_childFlow, childPoint, u_childCamera, u_childTime, u_childSeed), mask);
+      samplePainting(u_paint, u_flowMap, parentPoint, u_camera, u_time,
+        u_detailA, u_detailB, u_detailRectA, u_detailRectB, u_detailWeights, blendedFlow, morph),
+      samplePainting(u_childPaint, u_childFlow, childPoint, u_childCamera, u_childTime,
+        u_childDetailA, u_childDetailB, u_childDetailRectA, u_childDetailRectB, u_childDetailWeights, blendedFlow, morph), mask);
   }
 }
+
 `;
 
 // Create an offscreen GPU renderer
@@ -426,15 +451,26 @@ function drawBrushFlowShader(present = true, camera = null, portal = null) {
     }
     const child = portal ? portal.child : { base: brushV2.base, flowMap: brushFlowMap };
     const childCamera = portal ? portal.childCamera : camera;
+    const parentWorld = captureWorldV2();
+    updateBrushDetailsV2([
+        portal && portal.progress >= 0.96 ? null : detailViewV2(parentWorld, camera),
+        portal && portal.progress > 0.38 ? detailViewV2(child, childCamera) : null
+    ]);
+    const parentDetail = brushDetailUniformsV2(parentWorld, camera);
+    const childDetail = portal ? brushDetailUniformsV2(child, childCamera) : parentDetail;
     const uniforms = {
         u_paint: brushV2.base, u_flowMap: brushFlowMap,
         u_childPaint: child.base, u_childFlow: child.flowMap,
         u_resolution: [width, height], u_time: brushFlowTime,
         u_childTime: portal ? child.flowTime || 0 : brushFlowTime,
-        u_seed: universeSeed, u_childSeed: portal ? child.seed : universeSeed,
+        u_seed: universeSeed,
         u_strength: brushFlowSettings.strength, u_speed: brushFlowSettings.speed,
         u_flowEnabled: brushFlowSettings.enabled ? 1 : 0,
-        u_lodStrength: brushLODSettings.enabled ? brushLODSettings.strength : 0,
+        u_detailA: parentDetail.a, u_detailB: parentDetail.b,
+        u_detailRectA: parentDetail.rectA, u_detailRectB: parentDetail.rectB, u_detailWeights: parentDetail.weights,
+        u_childDetailA: childDetail.a, u_childDetailB: childDetail.b,
+        u_childDetailRectA: childDetail.rectA, u_childDetailRectB: childDetail.rectB, u_childDetailWeights: childDetail.weights,
+        u_progress: portal ? portal.progress : 0,
         u_cursor: [brushCursor.x, brushCursor.y],
         u_cursorRadius: brushFlowSettings.cursorRadius,
         u_cursorStrength: brushFlowSettings.cursorStrength,
@@ -442,8 +478,7 @@ function drawBrushFlowShader(present = true, camera = null, portal = null) {
         u_cursorVelocity: [brushCursor.vx, brushCursor.vy], u_cursorSpeed: brushCursor.speed,
         u_camera: [camera.x, camera.y, camera.zoom],
         u_childCamera: [childCamera.x, childCamera.y, childCamera.zoom],
-        u_portalActive: portal ? 1 : 0,
-        u_portal: portal ? [portal.anchorX, portal.anchorY, portal.radius, portal.opening] : [0, 0, 1, 0]
+        u_portalActive: portal ? 1 : 0
     };
     brushFlowBuffer.shader(brushFlowProgram);
     for (const [name, value] of Object.entries(uniforms)) brushFlowProgram.setUniform(name, value);

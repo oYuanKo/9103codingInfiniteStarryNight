@@ -209,6 +209,9 @@ function brushV2Color(x, y) {
 // Paint one thick brush mark
 
 function paintV2Stroke(g, x, y, angle, len, weight, colour, alpha = 255) {
+    if (g === brushV2.base && brushV2.detailSource) {
+        recordBrushStrokeV2(brushV2.detailSource, x, y, angle, len, weight, colour, alpha);
+    }
     const ux = cos(angle);
     const uy = sin(angle);
 
@@ -275,6 +278,7 @@ function* buildBrushV2Steps(seed, preservePrevious = false) {
 
     // Release previous buffers if regenerating
     if (!preservePrevious) {
+        disposeBrushDetailsV2(brushV2.detailSource);
         if (brushV2.base) brushV2.base.remove();
         if (brushV2.motion) brushV2.motion.remove();
     }
@@ -286,6 +290,7 @@ function* buildBrushV2Steps(seed, preservePrevious = false) {
     brushV2.motion.pixelDensity(1);
 
     brushV2.base.background(12, 28, 60);
+    brushV2.detailSource = newBrushDetailSourceV2();
 
     brushV2.time = 0;
     brushV2.marks = [];
@@ -369,6 +374,7 @@ function* buildBrushV2Steps(seed, preservePrevious = false) {
         yield;
     }
 
+    brushV2.detailSource.records = Float64Array.from(brushV2.detailSource.records);
     console.log("Brush V2 generated:", seed);
 }
 

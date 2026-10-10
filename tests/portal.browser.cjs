@@ -10,7 +10,7 @@ const root=path.resolve(__dirname,'..');
  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&!m.text().includes('404'))errors.push(m.text())});
  await page.goto(`http://127.0.0.1:${server.address().port}`);await page.waitForFunction(()=>typeof v2Camera!=='undefined'&&v2Camera&&brushFlowMap);
  await page.evaluate(()=>{
-  noLoop();brushFlowSettings.paused=true;brushFlowSettings.cursorEnabled=false;
+  noLoop();brushDetailSettings.enabled=false;brushFlowSettings.paused=true;brushFlowSettings.cursorEnabled=false;
   const star=brushV2.stars[0];Object.assign(v2Camera,stillCameraV2(3,-1328,-204));
   requestPortalV2(childEdgeV2(star),'in',-500);
   let n=0;while(nestedV2.preload||nestedV2.pending){updateChildPreloadV2();if(++n>2000)throw Error('generation stuck');}
@@ -29,13 +29,9 @@ const root=path.resolve(__dirname,'..');
   let changed=0;for(let i=0;i<parent.length;i+=4)if(parent[i]!==maskImage[i]||parent[i+1]!==maskImage[i+1])changed++;
   return {parentExact,childExact,reversible,outsideSame,changed};
  });
- console.log('Portal pixel checks:',endpoint);for(const name of ['parentExact','childExact','reversible','outsideSame'])assert.equal(endpoint[name],true,name);assert(endpoint.changed>100);
+ console.log('Portal pixel checks:',endpoint);for(const name of ['parentExact','childExact','reversible','outsideSame'])assert.equal(endpoint[name],true,name);assert.equal(endpoint.changed,0); // Early zoom is now entirely parent paint.
  for(const p of [0,.2,.45,.7,.9,1]){await page.evaluate(p=>renderAt(p),p);await page.locator('canvas').first().screenshot({path:path.join(root,'tests',`step6d-${Math.round(p*100)}.png`)});}
- const lod=await page.evaluate(()=>{
-  const tr=nestedV2.transition;
-  function compare(zoom){const cam={zoom,x:width/2-400*zoom,y:height/2-220*zoom};brushLODSettings.enabled=false;drawBrushFlowShader(false,cam);const a=pixels();brushLODSettings.enabled=true;drawBrushFlowShader(false,cam);const b=pixels();let sum=0,max=0;for(let i=0;i<a.length;i+=4)for(let c=0;c<3;c++){const d=Math.abs(a[i+c]-b[i+c]);sum+=d;max=Math.max(max,d)}return {mean:sum/(width*height*3),max};}
-  return {one:compare(1),deep:compare(10)};
- });assert.equal(lod.one.max,0);assert(lod.deep.mean>0);console.log('LOD pixel checks:',lod);
+ // Geometry replay / sharpness checks now live in detail.browser.cjs.
  const cursor=await page.evaluate(()=>{
   renderAt(.5);brushCursor.x=650;brushCursor.y=150;brushCursor.vx=9;brushCursor.vy=5;brushCursor.active=1;brushCursor.speed=1;
   brushFlowSettings.cursorEnabled=false;drawStarEntryV2();const a=pixels();brushFlowSettings.cursorEnabled=true;drawStarEntryV2();const b=pixels();
@@ -54,7 +50,7 @@ const root=path.resolve(__dirname,'..');
   return same(before,after);
  });assert(outward);console.log('PASS outward start matches actual child camera exactly');
  async function timing(portal){return page.evaluate(async portal=>{
-  const tr=nestedV2.transition;tr.progress=tr.targetProgress=.5;brushFlowSettings.paused=false;
+  const tr=nestedV2.transition;tr.progress=tr.targetProgress=.65;brushFlowSettings.paused=false;
   const values=[];let last=performance.now();
   for(let i=0;i<100;i++){await new Promise(requestAnimationFrame);const now=performance.now();if(i>10)values.push(now-last);last=now;if(portal)drawStarEntryV2();else drawBrushFlowShader(true,v2Camera);}
   values.sort((a,b)=>a-b);brushFlowSettings.paused=true;

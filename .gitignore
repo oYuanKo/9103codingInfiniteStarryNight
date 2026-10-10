@@ -1,2 +1,12 @@
-tests/step6c.png
-tests/step6d-*.png
+# Generated test screenshots and recordings
+tests/*.png
+tests/*.webm
+tests/*.mp4
+
+# Browser test reports
+test-results/
+playwright-report/
+
+# Local dependencies and logs
+node_modules/
+*.log
