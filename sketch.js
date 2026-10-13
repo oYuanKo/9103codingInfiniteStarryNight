@@ -85,6 +85,7 @@ function draw() {
       }
     }
 
+    drawStarHoverLightV2(deltaTime);
     return;
   }
 

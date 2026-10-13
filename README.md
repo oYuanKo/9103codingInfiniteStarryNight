@@ -280,3 +280,48 @@ so it measures the spatial path rather than asset arrival. Two recordings are
 saved: `step6d3-depth-roundtrip.webm` is a controlled depth sweep with live flow;
 `step6d3-wheel-roundtrip.webm` uses actual wheel events and normal navigation.
 Generated PNG/WebM/log files are already ignored by Git.
+
+## Step 7A ¡ª painterly star hover light
+
+`star_hover_light_v2.js` adds temporary cubic/comma brush geometry over the final
+2D painting, using the existing world camera. It does not repaint the cached
+world, change global cursor strength, add bloom, allocate textures, or introduce
+another LOD layer. It is called once per main draw after the normal/portal image.
+
+Only moon and major stars have records (120 / 96 strokes). Seed, star ID and
+stroke index deterministically select radius, direction, curvature, thickness,
+opacity and a cream/gold/pale-yellow palette with occasional blue-grey outer
+strokes. Tangential direction is influenced by the world's existing flow map.
+The core is left clear. Strokes are distributed irregularly across the halo;
+there is no moving circular ring or particle emitter.
+
+Proximity is continuous from the outer halo toward the core. Intensity eases in
+and out; dwell accumulates up to four seconds. An outward sequence of individual
+stroke fades reveals more of the fixed geometry over the first few seconds.
+Leaving decays both intensity and dwell. Gentle tangential drift is bounded in
+screen pixels, and a small independent opacity variation adds breathing.
+
+The ordinary cursor disturbance remains separate. C disables both cursor effects;
+Space freezes hover growth/drift as well as the existing animation; F freezes
+flow-related drift but leaves hover growth usable. During portals the parent
+light withdraws over progress 0¨C.42, and child light joins over .72¨C1. Hidden
+worlds do not accumulate dwell. At the endpoints, cameras and hover state match
+the corresponding normal view. Hover itself is time-dependent; it does not
+change wheel-driven navigation progress.
+
+Only the visible world (or two portal worlds) retains geometry/state. Leaving a
+world drops its temporary hover state on the next rendered frame. There are no
+GPU resources to free; returning regenerates identical geometry, with fresh dwell.
+
+`node tests/hover.browser.cjs` saves before/early/dwell/fade PNGs for moon and
+major-1, a short `tests/step7a-hover.webm`, plus zoom/portal frames. It checks inner
+core pixel stability with flow disabled, outward growth, decay, type filtering,
+resource reuse, pause/C/seed reset, actual zoom/portal reversal, rapid switching,
+and warmed frame/overlay timing. Existing navigation/portal/detail suites still
+cover the underlying systems. Generated media/logs remain ignored by Git.
+
+Limits: this is a sharp vector overlay, not pigment baked into the world's
+texture; it follows sampled flow gently rather than receiving the entire GPU
+warp. Portal light intentionally recedes through the middle of the transition.
+Very deep zoom can expose differences between these temporary curves and the
+base paint. Naturalness and preferred intensity still require visual judgement.
