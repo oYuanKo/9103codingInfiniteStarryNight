@@ -325,3 +325,45 @@ texture; it follows sampled flow gently rather than receiving the entire GPU
 warp. Portal light intentionally recedes through the middle of the transition.
 Very deep zoom can expose differences between these temporary curves and the
 base paint. Naturalness and preferred intensity still require visual judgement.
+
+## Step 7B - zoom-aware hover paint detail
+
+The original 96/120 macro light strokes and all Step 7A interaction remain intact.
+Each visible macro can lazily cache 9 meso and 15 micro pigment paths. These are
+short segments of its original cubic, with inherited tangent/curvature, bounded
+normal offsets and varied widths. Seed + star ID + macro index + level determines
+all geometry. Subtle alternating light/dark colour offsets inherit the original
+palette; no additive blending, grain, texture, framebuffer or new world build.
+
+Meso opacity uses smoothstep(2.4, 6, worldCamera.zoom); micro uses
+smoothstep(6, 16, worldCamera.zoom), matching the painting atlas. Both multiply
+the macro's exact hover/dwell/reveal/breath/portal alpha. They share its transform
+and drift, and widths remain in world units. The broad paint body stays intact;
+zoom reveals its smaller structure instead of imposing a screen-width cap.
+At 1x the output is unchanged. The local detailEnabled setting allows A/B testing.
+
+Geometry is generated once on first visible use of a level, never per wheel
+step. Existing view culling limits drawing; the existing one-world/two-portal-world
+cache lifetime also owns these paths. A six-target world has at most 14,400
+cached pigment paths (28,800 for two fully explored portal views), usually much
+less because hidden strokes/levels are not built. No extra GPU resources are
+allocated. Evicted worlds reproduce identical paths when revisited.
+
+Run node tests/hover_detail.browser.cjs with Playwright available, plus the
+existing hover/navigation/spatial/detail/hierarchy/portal suites. The new test
+saves ignored tests/step7b-{macro,detail}-{1,3,6,12,24}.png, moon comparisons,
+halo crops, and step7b-detail-roundtrip.webm. It measures warmed macro/detail CPU
+submission separately, cold build cost, pixel-identical reversal/regeneration,
+reveal inheritance, fade and per-world portal camera handling. Screenshots use
+frozen three-second dwell/flow for matching comparisons; the video is a controlled
+camera sweep, not a recording of wheel navigation. Existing suites exercise real
+wheel events and multiple nested/outer worlds.
+
+Limits: two finite levels of vector pigment, not physical paint simulation or
+infinite resolution. The overlay still does not receive the full GPU warp.
+The original sharp macro silhouette remains; internal variation is deliberately
+subtle. Normal navigation caps the current camera at 3x, then the parent portal
+camera grows while hover ownership fades over progress 0-.42. Diagnostic 12x/24x
+views bypass this visibility restriction solely in tests; portal mapping/fades
+are unchanged. Test timing and image equivalence do not establish subjective
+naturalness, GPU latency or absence of long-session memory leaks.
