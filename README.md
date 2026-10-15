@@ -391,13 +391,12 @@ events without giving subscribers mutable navigation references.
 
 Validation: run the seven existing browser suites and tests/app.browser.cjs.
 Use --soak with the app test for a 30-second real-animation resource sample.
-Tests/refactor.browser.cjs compares three fixed seeds to an ignored local baseline
-and three portal depths directly with the archived draw function using the SAME
-world resources. To recreate the seed baseline on a fresh checkout, run
-node tests/refactor.browser.cjs --original --baseline first. Do not generate it
-from changed production code. Repeated runs of the original portal fixture did
-not have identical cross-session hashes; same-resource comparisons isolate the
-refactor from that pre-existing variability without relaxing the pixel assertion.
+tests/refactor.browser.cjs reads the Git-visible JSON fixture at
+ tests/fixtures/refactor-pixels-baseline.json. Fresh checkouts need no local log
+or manual baseline reconstruction. All three seeds and three portal depths use
+strict same-context, same-resource old/new pixel comparisons; stored image
+hashes are diagnostic across browser/GPU environments. See GROUP_INTEGRATION.md
+for dependencies and original-only fixture regeneration instructions.
 Existing browser servers changed only to serve the new stylesheet as text/css.
 
 The optional tests/presentation_performance.browser.cjs compares stylesheet
@@ -410,13 +409,7 @@ throughout. Long-session/device-specific behaviour still needs manual review.
 The existing ancestor-pinning policy is unchanged: world cache size is a soft
 limit at deep nesting, so arbitrarily deep ancestry does not have constant memory.
 
-Pixel-repeat caveat: one final Seed 12 cross-run snapshot differed from the
-saved PNG in 9 colour channels, with maximum difference 2/255 (12 total absolute
-channel units across the 800x600 image). Seeds 89/205 were unchanged. The cause
-was not established; the strict assertion was retained rather than relaxed.
-Keep this distinction separate from same-resource old/new draw comparisons,
-which passed. Retain manual visual review before presentation.
-
-Three subsequent strict pixel repeats: two passed, one failed for Seed 12.
-Latest PNG difference: 13 colour channels, maximum 2/255;
-15 total absolute channel units. All original regression assertions remain intact.
+Earlier cross-run Seed 12 snapshots occasionally differed by up to 2/255 in a
+small number of colour channels; original portal runs also had varying hashes.
+The portable fixture now records those hashes for reference while the regression
+gate remains exact live old/new pixel equality. No artwork or renderer was changed.

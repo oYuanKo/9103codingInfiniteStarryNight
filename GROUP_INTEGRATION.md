@@ -103,13 +103,34 @@ CSS dimensions; p5 performs its built-in pointer mapping. Never multiply mouseX
 or mouseY by display scale again. H or the guide button toggles instructions.
 Q/W/E, F, Space, C, R and bracket controls remain available without a debug HUD.
 
-Run all seven existing tests plus tests/refactor.browser.cjs and
- tests/app.browser.cjs with Node and Playwright (Edge channel). The refactor
-comparison uses archived draw code with the same world assets for portal pixels;
-for seed baselines first run node tests/refactor.browser.cjs --original --baseline.
-This baseline must only be refreshed from the archived original, not changed
-production code. A test server must serve CSS as text/css and JS as JavaScript.
-Generated PNG/WebM/log files are ignored by Git.
+Run the seven existing browser suites plus tests/refactor.browser.cjs and
+ tests/app.browser.cjs. Prerequisites: Node.js, the Playwright package available
+to Node, installed Microsoft Edge (msedge channel), and access to the p5 CDN.
+For example, install the test dependency with
+`npm install --no-save --package-lock=false playwright`.
+
+A fresh checkout includes tests/fixtures/refactor-pixels-baseline.json; simply run
+`node tests/refactor.browser.cjs`. No ignored log, screenshot or manual baseline
+reconstruction is needed. Include the JSON fixture in the reviewed commit.
+
+The fixture records archived-source hashes (LF/CRLF independent), browser/p5
+versions and reference image hashes. These image hashes are diagnostic, not a
+cross-machine pass/fail gate: browser/GPU/rasterisation and asset-build timing
+can differ. The hard assertion compares old and new draw functions pixel-for-pixel
+in the SAME browser context, on the SAME world assets, for seeds 12/89/205 and
+portal depths 20/60/80 percent. No pixel tolerance is used. This isolates lifecycle
+refactoring, not independent changes to shared painting algorithms; keep the other
+regression suites and manual visual review.
+
+Only when intentionally updating the archived reference, regenerate with
+`node tests/refactor.browser.cjs --original --baseline` and review the JSON diff.
+The harness boots legacy/sketch.js with its archived supporting scripts, excludes
+the refactored app/input controllers, verifies the runtime, and writes only after
+checks pass. --baseline without --original is rejected. Normal tests never rewrite
+the fixture, and archived-source changes fail provenance validation.
+
+A test server must serve CSS as text/css and JS as JavaScript. Generated
+PNG/WebM and temporary log files remain ignored by Git.
 
 Manually check your module with pause/resume, seed resets, portal reversal,
 multiple levels, resize, and no module attached. Unsubscribe/re-attach several
@@ -123,3 +144,18 @@ Create a separate branch from the agreed brushv2yuan baseline for each member
 and run regressions before review. Review core-file changes together; integrate
 one member at a time and retest. Do not overwrite another member's uncommitted
 files or merge the historical prototype back into the active application.
+
+## Experimental Cosmic Threshold (Step 11)
+
+The prototype is enabled by default. Set `cosmicThresholdSettingsV2.enabled = false`
+in DevTools (or change its default in `cosmic_threshold_v2.js`) to recover the accepted portal.
+No new presentation controls or integration API are introduced. Both camera equations
+and the world graph are unchanged. Tests that compare archived appearance disable it;
+the original-only JSON fixture must not be regenerated from this prototype.
+
+Run `node tests/cosmic.browser.cjs` for enabled/disabled depth screenshots, exact
+endpoints, settled reversal, real wheel pause/reversal, cache and paired cost checks.
+Run the existing navigation, portal, spatial, detail, hierarchy, hover, hover_detail,
+app and refactor browser suites as usual. See [tests/STEP11.md](tests/STEP11.md) for
+implementation boundaries, evidence filenames and visual limitations. PNG/WebM/log
+outputs remain ignored; no fixture reconstruction is required for the new test.

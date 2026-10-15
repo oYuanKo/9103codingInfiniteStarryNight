@@ -329,7 +329,9 @@ function getPortalRenderV2() {
 
 function drawStarEntryV2() {
     if (!nestedV2.transition) return;
-    drawBrushFlowShader(true, getStarEntryCameraV2(), getPortalRenderV2());
+    const portal = getPortalRenderV2();
+    drawBrushFlowShader(true, getStarEntryCameraV2(), portal);
+    drawCosmicThresholdV2(portal);
 }
 
 function resetNestedV2() {
