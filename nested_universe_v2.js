@@ -246,6 +246,7 @@ function beginPortalV2(nav) {
         childCamera: nav.direction === 'out' ? nav.originCamera : stillCameraV2() };
     nestedV2.pending = null;
     activateWorldV2(nav.edge.parent.world);
+    queueGroupPortalV2('begin', nestedV2.transition);
 }
 
 function handleStarEntryWheelV2(delta) {
@@ -274,6 +275,7 @@ function finishPortalV2(toChild) {
     nestedV2.current = node;
     node.used = ++nestedV2.clock;
     nestedV2.transition = null;
+    queueGroupPortalV2('end', tr, cancelled ? 'cancelled' : 'completed');
     trimWorldCacheV2();
 }
 
@@ -331,6 +333,7 @@ function drawStarEntryV2() {
 }
 
 function resetNestedV2() {
+    if (nestedV2.transition) queueGroupPortalV2('end', nestedV2.transition, 'reset');
     currentWorldNodeV2();
     clearChildPreloadV2();
     for (const node of nestedV2.nodes) disposeWorldV2(node.world);

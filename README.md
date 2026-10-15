@@ -230,7 +230,7 @@ machine dependent. Cold detail takes multiple frames; old paint remains visible
 until completion. These checks do not establish subjective visual naturalness
 or a long-duration memory-leak guarantee.
 
-## Step 6D.3 ¡ª spatial direction and composition reconstruction
+## Step 6D.3 ï¿½ï¿½ spatial direction and composition reconstruction
 
 This replaces the 3x-to-1x child crop in earlier steps. Previously the parent
 zoomed in while every recognizable child feature shrank, even with identical
@@ -281,7 +281,7 @@ saved: `step6d3-depth-roundtrip.webm` is a controlled depth sweep with live flow
 `step6d3-wheel-roundtrip.webm` uses actual wheel events and normal navigation.
 Generated PNG/WebM/log files are already ignored by Git.
 
-## Step 7A ¡ª painterly star hover light
+## Step 7A ï¿½ï¿½ painterly star hover light
 
 `star_hover_light_v2.js` adds temporary cubic/comma brush geometry over the final
 2D painting, using the existing world camera. It does not repaint the cached
@@ -304,7 +304,7 @@ screen pixels, and a small independent opacity variation adds breathing.
 The ordinary cursor disturbance remains separate. C disables both cursor effects;
 Space freezes hover growth/drift as well as the existing animation; F freezes
 flow-related drift but leaves hover growth usable. During portals the parent
-light withdraws over progress 0¨C.42, and child light joins over .72¨C1. Hidden
+light withdraws over progress 0ï¿½C.42, and child light joins over .72ï¿½C1. Hidden
 worlds do not accumulate dwell. At the endpoints, cameras and hover state match
 the corresponding normal view. Hover itself is time-dependent; it does not
 change wheel-driven navigation progress.
@@ -367,3 +367,56 @@ camera grows while hover ownership fades over progress 0-.42. Diagnostic 12x/24x
 views bypass this visibility restriction solely in tests; portal mapping/fades
 are unchanged. Test timing and image equivalence do not establish subjective
 naturalness, GPU latency or absence of long-session memory leaks.
+
+## Step 8 / Step 10 - one runtime and team integration
+
+sketch.js now owns only p5 callbacks. app_controller.js preserves setup and frame
+order; input_controller.js owns the existing active keyboard/wheel routing.
+The unused NIGHT/SPACE/STAR/FADE prototype and its three supporting scripts are
+preserved in legacy/ and are no longer loaded. artwork.js remains
+active and is not part of that archive.
+
+ui_overlay.js keeps logical resolution at 800x600, scales only CSS dimensions
+at 4:3, and delegates pointer conversion to p5. The dark centred presentation
+adds a small guide outside the painting; it hides after 12 seconds, and the
+button or H toggles it. All existing active shortcuts remain available.
+No shader, painting, LOD or portal camera mapping was redesigned.
+
+Read GROUP_INTEGRATION.md before adding Audio or Time modules. group_bridge.js
+provides frozen snapshots, frame/universe/portal subscriptions with cleanup, and
+two validated Flow setters. Optional callbacks run after rendering; no optional
+module is required, and no Audio/Time behaviour has been implemented. Three
+small lifecycle notifications in nested_universe_v2.js preserve begin/end/reset
+events without giving subscribers mutable navigation references.
+
+Validation: run the seven existing browser suites and tests/app.browser.cjs.
+Use --soak with the app test for a 30-second real-animation resource sample.
+Tests/refactor.browser.cjs compares three fixed seeds to an ignored local baseline
+and three portal depths directly with the archived draw function using the SAME
+world resources. To recreate the seed baseline on a fresh checkout, run
+node tests/refactor.browser.cjs --original --baseline first. Do not generate it
+from changed production code. Repeated runs of the original portal fixture did
+not have identical cross-session hashes; same-resource comparisons isolate the
+refactor from that pre-existing variability without relaxing the pixel assertion.
+Existing browser servers changed only to serve the new stylesheet as text/css.
+
+The optional tests/presentation_performance.browser.cjs compares stylesheet
+on/off in the same page, separating CPU submission from forced GPU readback.
+On the local Edge run, later paired readback medians were about 3.5-3.6 ms;
+initial segments and standalone runs varied up to about 6.6 ms. This is not a
+claim of improved FPS. The 30-second real-loop sample had median/P95 frame
+intervals of 17.8/17.9 ms with one hover world, two textures and four canvases
+throughout. Long-session/device-specific behaviour still needs manual review.
+The existing ancestor-pinning policy is unchanged: world cache size is a soft
+limit at deep nesting, so arbitrarily deep ancestry does not have constant memory.
+
+Pixel-repeat caveat: one final Seed 12 cross-run snapshot differed from the
+saved PNG in 9 colour channels, with maximum difference 2/255 (12 total absolute
+channel units across the 800x600 image). Seeds 89/205 were unchanged. The cause
+was not established; the strict assertion was retained rather than relaxed.
+Keep this distinction separate from same-resource old/new draw comparisons,
+which passed. Retain manual visual review before presentation.
+
+Three subsequent strict pixel repeats: two passed, one failed for Seed 12.
+Latest PNG difference: 13 colour channels, maximum 2/255;
+15 total absolute channel units. All original regression assertions remain intact.
