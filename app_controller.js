@@ -17,6 +17,9 @@ function drawPaintingAppV2() {
     if (!nestedV2.transition) maybePreloadChildV2();
     updateChildPreloadV2();
     if (nestedV2.transition) updateStarEntryV2(deltaTime);
+    // Time reads the committed world after navigation, before drawing this frame.
+    // AI acknowledgement: this optional Time wiring was added with Codex assistance.
+    if (typeof updateTimeMechanic === 'function') updateTimeMechanic(deltaTime, StarryNight.getState());
     if (nestedV2.transition) {
         drawStarEntryV2();
     } else {
@@ -24,6 +27,7 @@ function drawPaintingAppV2() {
         const painting = drawBrushFlowShader(false, v2Camera);
         if (painting) image(painting, 0, 0, width, height);
     }
+    if (typeof drawTimeAtmosphere === 'function') drawTimeAtmosphere();
     drawStarHoverLightV2(deltaTime);
     publishGroupFrameV2(deltaTime);
 }

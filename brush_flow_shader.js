@@ -528,7 +528,10 @@ function drawBrushFlowShader(present = true, camera = null, portal = null) {
     if (!brushV2.base || !brushFlowProgram) return;
     camera = camera || { x: 0, y: 0, zoom: 1 };
     if (brushFlowSettings.enabled && !brushFlowSettings.paused) {
-        const dt = Math.min(deltaTime, 33) * 0.001;
+        // AI acknowledgement: Codex-assisted Time integration. Accumulate each
+        // frame's travel at its CURRENT speed instead of multiplying the entire
+        // elapsed history by a newly selected speed. Default 1.2 is unchanged.
+        const dt = Math.min(deltaTime, 33) * 0.001 * brushFlowSettings.speed / 1.2;
         brushFlowTime += dt;
         if (portal) portal.child.flowTime = (portal.child.flowTime || 0) + dt;
         updateBrushCursor();
@@ -548,7 +551,7 @@ function drawBrushFlowShader(present = true, camera = null, portal = null) {
         u_resolution: [width, height], u_time: brushFlowTime,
         u_childTime: portal ? child.flowTime || 0 : brushFlowTime,
         u_seed: universeSeed,
-        u_strength: brushFlowSettings.strength, u_speed: brushFlowSettings.speed,
+        u_strength: brushFlowSettings.strength, u_speed: 1.2,
         u_flowEnabled: brushFlowSettings.enabled ? 1 : 0,
         u_detailA: parentDetail.a, u_detailB: parentDetail.b,
         u_detailRectA: parentDetail.rectA, u_detailRectB: parentDetail.rectB, u_detailWeights: parentDetail.weights,
