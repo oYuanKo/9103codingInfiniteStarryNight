@@ -389,94 +389,6 @@ void main() {
 
 `;
 
-// Separate compiled variant keeps the disabled shader source byte-for-byte intact.
-let cosmicFlowProgramV2 = null;
-let cosmicFlowWarmedV2 = false;
-const COSMIC_FLOW_FRAG_V2 = BRUSH_FLOW_FRAG
-    .replace("uniform float u_microEnabled;", "uniform float u_microEnabled;\nuniform float u_cosmicThreshold;")
-    .replace("  vec3 evolving = mix(parent.rgb,underpaint+relief,colour);", `  // Mid-depth pigment treatment only. Existing brush ownership carries the
-  // blue through paint; no full-screen dark overlay or extra noise field.
-  float threshold = u_cosmicThreshold * smoothstep(.35,.52,phase)
-                    * (1.0-smoothstep(.62,.88,phase));
-  if (threshold > 0.0) {
-    vec3 indigo = mix(vec3(13.0,35.0,75.0),vec3(40.0,78.0,137.0),
-                     clamp(.25+.55*stroke+.20*length(childFlow),0.0,1.0))/255.0;
-    // Broad broken pigment current shares the cached fragments' child-space
-    // centreline. Soft tonal separation only; never a solid stripe or glow.
-    float riverY = .30+.13*sin((childUV.x-.10)*4.5)-.10*childUV.x;
-    float riverWidth = .065+.025*sin(childUV.x*9.0+1.0);
-    float riverDistance = (childUV.y-riverY)/riverWidth;
-    float river = exp(-riverDistance*riverDistance)*smoothstep(.02,.16,childUV.x)
-                  *(1.0-smoothstep(.82,.98,childUV.x));
-    river *= .55+.45*clamp(length(childFlow),0.0,1.0);
-    vec3 deepPigment = mix(indigo*.78,vec3(57.0,87.0,127.0)/255.0,river*.75);
-    underpaint = mix(underpaint,deepPigment,threshold*.78);
-    // Retire macro silhouettes through pigment reconstruction while retaining
-    // existing sharp relief, rather than a full-screen fade to empty space.
-    colour += (1.0-colour)*threshold*.78;
-    // The old relief also carries large displaced contours at deep zoom.
-    // Keep a trace of that material while cached small fragments carry detail.
-    relief *= 1.0-threshold*.70;
-    // Delay silhouettes locally, while retaining replay relief and child flow.
-    // The original structure ramp is recovered exactly by .88.
-    float arrivingStructure = structure;
-    structure *= 1.0-threshold*.72;
-    // Let warm child pigment establish local constellations earlier than terrain.
-    // Uses the existing flow-aligned pigment samples, not another mask/noise field.
-    float constellation = smoothstep(.10,.32,pigment.r-pigment.b);
-    structure = mix(structure,arrivingStructure,
-        threshold*constellation*.32*smoothstep(.40,.64,phase));
-  }
-  vec3 evolving = mix(parent.rgb,underpaint+relief,colour);
-`);
-
-
-// The previous cosmic program is retained verbatim for a true Step 11.3 A/B.
-let cosmicFormationProgramV2 = null;
-const COSMIC_FORMATION_FRAG_V2 = BRUSH_FLOW_FRAG
-    .replace('uniform float u_microEnabled;', 'uniform float u_microEnabled;\nuniform float u_cosmicThreshold;\nuniform vec3 u_cosmicStages;\nuniform vec3 u_cosmicStars[6];')
-    .replace('  vec3 evolving = mix(parent.rgb,underpaint+relief,colour);', `
-  float galaxy = u_cosmicStages.x, proto = u_cosmicStages.y;
-  float formation = u_cosmicStages.z;
-  // Child-space density: forked irregular currents and local star-associated
-  // pigment clouds. This reconstructs the paint, not an overlaid third image.
-  float laneY=.30+.13*sin((childUV.x-.10)*4.5)-.10*childUV.x;
-  float q=(childUV.y-laneY-childFlow.y*.035)/.075;
-  float lane=exp(-q*q);
-  float forkQ=(childUV.y-laneY-.12*sin(childUV.x*5.5+1.0))/.045;
-  float fork=exp(-forkQ*forkQ)*.45;
-  float cloud=0.0,centres=0.0;
-  for(int i=0;i<6;i++) {
-    vec3 star=u_cosmicStars[i];
-    vec2 d=childUV-star.xy;
-    vec2 cloudPoint=vec2(d.x/.14,(childUV.y-laneY)/.12);
-    cloud+=exp(-dot(cloudPoint,cloudPoint))*.26;
-    vec2 halo=d/vec2(star.z*.75,star.z);
-    centres=max(centres,exp(-dot(halo,halo)*.18));
-  }
-  float density=clamp((lane*.65+fork+cloud)*(.7+.3*length(childFlow)),0.0,1.0);
-  vec3 spacePigment=mix(vec3(13.0,27.0,60.0),vec3(65.0,96.0,136.0),density)/255.0;
-  // Existing child paint supplies small colour/brush variation, not its whole
-  // high-contrast composition. Parent macro contours recede only in this stage.
-  vec2 skyUV=vec2(childUV.x,.08+.35*childUV.y);
-  vec3 finePigment=clamp(texture2D(u_childPaint,skyUV).rgb-
-      texture2D(u_childPaint,clamp(skyUV+vec2(.004,.003),0.0,1.0)).rgb,-.04,.04);
-  // One pigment treatment, not the previous threshold followed by another
-  // full-strength darkening pass. Keep replay relief present through the interior.
-  underpaint=mix(underpaint,spacePigment+finePigment*.25,galaxy*.70);
-  // Retirement is monotonic: fading the galaxy must not bring parent silhouettes
-  // back behind the new stars. By .73 the baseline colour ramp is also exactly 1.
-  colour=max(colour,smoothstep(.35,.55,phase));
-  relief*=1.0-max(galaxy,proto)*.70;
-  // Broaden existing LOCAL structure formation rather than suppressing all stars
-  // to zero then switching them on together. No new opacity aperture or timer.
-  structure=mix(structure,structure*structure,galaxy*.65);
-  float haloFormation=proto*formation*centres*.12;
-  structure+=(1.0-structure)*haloFormation;
-  underpaint=mix(underpaint,mix(palette,pigment,.65),proto*formation*.25);
-  vec3 evolving = mix(parent.rgb,underpaint+relief,colour);
-`);
-
 // Create an offscreen GPU renderer
 function initBrushFlowShader() {
     if (brushFlowBuffer) {
@@ -497,9 +409,6 @@ function initBrushFlowShader() {
         BRUSH_FLOW_FRAG
     );
 
-    cosmicFlowWarmedV2 = false;
-    cosmicFlowProgramV2 = brushFlowBuffer.createShader(BRUSH_FLOW_VERT, COSMIC_FLOW_FRAG_V2);
-    cosmicFormationProgramV2 = brushFlowBuffer.createShader(BRUSH_FLOW_VERT, COSMIC_FORMATION_FRAG_V2);
     brushFlowTime = 0;
 
     rebuildBrushFlowMap();
@@ -624,7 +533,6 @@ function drawBrushFlowShader(present = true, camera = null, portal = null) {
         u_childDetailA: childDetail.a, u_childDetailB: childDetail.b,
         u_childDetailRectA: childDetail.rectA, u_childDetailRectB: childDetail.rectB, u_childDetailWeights: childDetail.weights,
         u_progress: portal ? portal.progress : 0,
-        u_cosmicThreshold: cosmicThresholdSettingsV2.enabled ? 1 : 0,
         u_microEnabled: brushDetailSettings.microEnabled ? 1 : 0,
         u_portalAnchor: portal ? [portal.anchorX,portal.anchorY] : [width/2,height/2],
         u_cursor: [brushCursor.x, brushCursor.y],
@@ -636,29 +544,9 @@ function drawBrushFlowShader(present = true, camera = null, portal = null) {
         u_childCamera: [childCamera.x, childCamera.y, childCamera.zoom],
         u_portalActive: portal ? 1 : 0
     };
-    const experimental = cosmicThresholdSettingsV2.enabled && portal && portal.progress > .35 && portal.progress < .88;
-    // Compile/upload the variant during the first ordinary frame, never at the
-    // .35 depth boundary. Reuses this buffer and the already-needed textures.
-    // Startup pays one extra draw; no world/portal cache is involved.
-    if (!cosmicFlowWarmedV2 && cosmicThresholdSettingsV2.enabled && !portal) {
-        for (const warm of [cosmicFlowProgramV2,cosmicFormationProgramV2]) {
-            brushFlowBuffer.shader(warm);
-            for (const [name, value] of Object.entries(uniforms)) warm.setUniform(name, value);
-            if(warm===cosmicFormationProgramV2)warm.setUniform('u_cosmicStages',[0,0,0]);
-            brushFlowBuffer.plane(width,height);
-        }
-        cosmicFlowWarmedV2 = true;
-    }
-    const enhanced = experimental && (cosmicThresholdSettingsV2.galaxyInterior || cosmicThresholdSettingsV2.protoUniverse);
-    const program = enhanced ? cosmicFormationProgramV2 : experimental ? cosmicFlowProgramV2 : brushFlowProgram;
-    brushFlowBuffer.shader(program);
+    brushFlowBuffer.shader(brushFlowProgram);
     for (const [name, value] of Object.entries(uniforms)) {
-        if (name === 'u_cosmicThreshold' && !experimental) continue;
-        program.setUniform(name, value);
-    }
-    if (enhanced) {
-        program.setUniform('u_cosmicStages',cosmicStagesV2(portal.progress));
-        program.setUniform('u_cosmicStars',cosmicMarksV2(nestedV2.transition).starUniforms);
+        brushFlowProgram.setUniform(name, value);
     }
     brushFlowBuffer.clear();
     brushFlowBuffer.plane(width, height);

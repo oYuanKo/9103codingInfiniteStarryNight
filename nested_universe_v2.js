@@ -70,7 +70,6 @@ function outerEdgeV2() {
 
 function disposeWorldV2(world) {
     if (!world) return;
-    releaseCosmicWorldV2(world.seed);
     disposeBrushDetailsV2(world.detailSource);
     world.detailSource = null;
     for (const key of ['base', 'motion', 'flowMap']) {
@@ -332,7 +331,6 @@ function drawStarEntryV2() {
     if (!nestedV2.transition) return;
     const portal = getPortalRenderV2();
     drawBrushFlowShader(true, getStarEntryCameraV2(), portal);
-    drawCosmicThresholdV2(portal);
 }
 
 function resetNestedV2() {

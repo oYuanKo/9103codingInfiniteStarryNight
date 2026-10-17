@@ -1,0 +1,13 @@
+# Accepted production portal regression
+
+Run node tests/production_portal.browser.cjs with Playwright and an installed Edge (or BROWSER_CHANNEL). This compares the active renderer against the archived pre-cleanup Mode A draw function in the SAME browser, using the same textures, settled LOD, paused time, seed, cameras and progress. It also requires the original fragment shader to be identical. The historical function is test-only and is never loaded by index.html.
+
+Coverage: seeds 12/89/205, moon and major-1, depths 0/20/35/45/50/60/70/85/100 percent. The shader and draw reference are version-controlled under experiments/cosmic_threshold/source. A fresh checkout needs no generated baseline. GPU differences across machines are not compared to a universal pixel hash.
+
+For this finalisation, --capture-mode-a was run BEFORE cleanup, with the experimental runtime explicitly set to Mode A. It rejects the cleaned application. Its ignored step11-final-modeA-baseline.log additionally records before/after pixel hashes and enforces exact camera and LOD-weight comparisons in the same environment. Do not recreate this baseline from cleaned production or Modes B/C. Keep/delete it when appropriate for the original environment; do not transfer it as a portable fixture.
+
+Generated before/after PNGs and reports stay in tests/ and remain ignored. The tests add resource/timing probes only to served HTML. Timings include pixel readback and are not interactive FPS or isolated shader compile time. Run navigation, portal, spatial, detail, hierarchy, hover, hover_detail, app and refactor browser suites too; archived experiment suites are historical references only.
+
+Cross-run diagnosis during finalisation: replaying the archived OLD shader in a fresh browser already differs from the saved old frame (107/1,440,000 RGB channels, max 2, mean 0.000079 at depth 0). The cleaned draw had 151 changed channels, max 10, mean 0.000140. Therefore stored hashes are reported, not treated as a portable or cross-process exact gate. Camera/LOD states remain exact assertions; the 54 same-context old/new comparisons remain ZERO-tolerance pixel assertions. --diagnose-old and --diagnose-new reproduce the first-frame investigation and write ignored PNGs. No existing test assertions were relaxed.
+
+Run --measure-only after all other browser suites exit for an isolated paired draw benchmark. It settles each depth and alternates reference/production/production/reference on identical resources, excluding ten warmup frames. This mode does not run or claim the 54 visual comparisons, does not replace their report, and cannot be combined with --capture-mode-a. Read the [finalisation evidence](STEP11_FINALISATION.md) for this run.

@@ -1,5 +1,5 @@
 // Experimental visual treatment, never a navigation state or a timer.
-const cosmicThresholdSettingsV2 = { enabled: true, galaxyInterior: true, protoUniverse: true };
+const cosmicThresholdSettingsV2 = { enabled: false, brushContinuity: false, galaxyInterior: true, protoUniverse: true };
 const cosmicThresholdV2 = { cache: new Map(), stats: { builds: 0, buildMs: 0, drawn: 0 } };
 function cosmicRampV2(a,b,p) {
     const t=Math.max(0,Math.min(1,(p-a)/(b-a)));return t*t*(3-2*t);
@@ -129,6 +129,7 @@ function cosmicMarksV2(tr) {
     return marks;
 }
 function drawCosmicThresholdV2(portal) {
+    if (usesBrushCosmosV2()) { drawBrushCosmosV2(portal); return; }
     cosmicThresholdV2.stats.drawn=0;
     const p=portal.progress;
     if(!cosmicThresholdSettingsV2.enabled || p<=.35 || p>=.88)return;

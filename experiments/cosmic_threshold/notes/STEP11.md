@@ -1,7 +1,8 @@
 # Cosmic Threshold prototype
 
 Enable/disable in the browser console: cosmicThresholdSettingsV2.enabled = true / false.
-Default: enabled. No new keys or presentation controls. Disable for the accepted portal.
+Default since Step 11.5: disabled (original portal). No new keys or presentation controls.
+See [STEP11_5.md](STEP11_5.md) for isolated A/B/C review and the rejected prototype findings.
 
 Run with Node + Playwright and installed Edge (BROWSER_CHANNEL may override):
 

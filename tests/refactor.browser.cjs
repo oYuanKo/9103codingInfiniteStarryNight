@@ -56,7 +56,7 @@ if (!baseline) {
     await page.waitForFunction(() => typeof v2Camera !== 'undefined' && v2Camera && brushFlowMap);
     if (original) assert(await page.evaluate(() => typeof setupPaintingAppV2 === 'undefined' && typeof InputMechanic === 'function' && BRUSH_V2_PREVIEW === true), 'Fixture must boot the archived original');
     await page.evaluate(() => {
-      noLoop(); cosmicThresholdSettingsV2.enabled = false; brushFlowSettings.paused = true; brushFlowSettings.enabled = false; brushFlowSettings.cursorEnabled = false;
+      noLoop(); brushFlowSettings.paused = true; brushFlowSettings.enabled = false; brushFlowSettings.cursorEnabled = false;
       window.snapshotHash = async () => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', drawingContext.getImageData(0, 0, width, height).data))).map(n => n.toString(16).padStart(2, '0')).join('');
       window.settleSnapshot = async () => {
         for (let n = 0; n < 1600; n++) {

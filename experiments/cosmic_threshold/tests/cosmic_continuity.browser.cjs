@@ -8,7 +8,7 @@ const {chromium}=require('playwright');const root=path.resolve(__dirname,'..');
  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&!m.text().includes('404'))errors.push(m.text())});
  await page.goto(`http://127.0.0.1:${server.address().port}`);await page.waitForFunction(()=>typeof v2Camera!=='undefined'&&v2Camera&&brushFlowMap);
  await page.evaluate(()=>{
-  noLoop();brushFlowSettings.paused=true;brushFlowSettings.cursorEnabled=false;
+  noLoop();cosmicThresholdSettingsV2.enabled=true;brushFlowSettings.paused=true;brushFlowSettings.cursorEnabled=false;
   window.pixels=()=>Uint8Array.from(drawingContext.getImageData(0,0,width,height).data);
   window.same=(a,b)=>a.every((v,i)=>v===b[i]);
   window.renderAt=p=>{nestedV2.transition.progress=nestedV2.transition.targetProgress=p;drawStarEntryV2();return pixels()};
