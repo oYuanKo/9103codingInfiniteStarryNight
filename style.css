@@ -1,0 +1,10 @@
+html, body { margin: 0; padding: 0; background: #091525; color: #b9c2cc; }
+body { font: 12px/1.5 Arial, sans-serif; overflow: hidden; }
+#presentation { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px; }
+#artwork canvas { display: block; }
+#presentation-guide { width: min(800px, calc(100% - 32px)); height: 82px; text-align: center; }
+#help-toggle { font: inherit; color: #cfcaac; border: 1px solid #394453; border-radius: 3px;
+  background: transparent; padding: 3px 10px; cursor: pointer; }
+#help-toggle:hover, #help-toggle:focus-visible { color: #fff2cf; border-color: #a59b77; }
+#painting-help { margin: 8px 0 0; }

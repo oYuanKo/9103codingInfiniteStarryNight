@@ -1,0 +1,57 @@
+{
+  "baseCommit": "465b308",
+  "branch": "brushv2yuan",
+  "description": "Exact local pre-finalisation source, including uncommitted Step 11.5. Hashes normalise line endings only.",
+  "files": [
+    {
+      "original": "cosmic_threshold_v2.js",
+      "archived": "experiments/cosmic_threshold/source/cosmic_threshold_v2.js",
+      "sha256": "594d5db06b38a0c357dc8cdd75b13eef31cb18db5e68476f493f158eb2ad6fb4"
+    },
+    {
+      "original": "brush_cosmos_prototype_v2.js",
+      "archived": "experiments/cosmic_threshold/source/brush_cosmos_prototype_v2.js",
+      "sha256": "1df6b04fa931778181ac71de9440f62067a6f839c113237d56cb32c24eb4e826"
+    },
+    {
+      "original": "brush_flow_shader.js",
+      "archived": "experiments/cosmic_threshold/source/brush_flow_shader.js",
+      "sha256": "fac6982d16a0ed92a27cd33881b45be0b542c77d6aba2a650646452b0e48415d"
+    },
+    {
+      "original": "tests/STEP11.md",
+      "archived": "experiments/cosmic_threshold/notes/STEP11.md",
+      "sha256": "e2a1766c42ed5560785118a2862820b832dffd3c4e54e8d65d2e7e2e98aee508"
+    },
+    {
+      "original": "tests/STEP11_5.md",
+      "archived": "experiments/cosmic_threshold/notes/STEP11_5.md",
+      "sha256": "3f4c6336bd213ed8437faa1f94154ddf9612d0115f9ae59e80f3a213adc9805c"
+    },
+    {
+      "original": "tests/cosmic.browser.cjs",
+      "archived": "experiments/cosmic_threshold/tests/cosmic.browser.cjs",
+      "sha256": "a758c065b6918e6070eccc3500885a162022e37e87bec15bc7425adf87225781"
+    },
+    {
+      "original": "tests/cosmic_enrichment.browser.cjs",
+      "archived": "experiments/cosmic_threshold/tests/cosmic_enrichment.browser.cjs",
+      "sha256": "19cd12a3775317d93340085113705689338d0093cf5931a0751f16a64f069a8a"
+    },
+    {
+      "original": "tests/cosmic_formation.browser.cjs",
+      "archived": "experiments/cosmic_threshold/tests/cosmic_formation.browser.cjs",
+      "sha256": "6438ca8c71b17e65bc88e2b6eee4431004ec75e19fee7dae32d530d2bcbf540c"
+    },
+    {
+      "original": "tests/cosmic_continuity.browser.cjs",
+      "archived": "experiments/cosmic_threshold/tests/cosmic_continuity.browser.cjs",
+      "sha256": "8e9b843e9b7b1b0af46e1a26fd6231544f11245bf16151046952d50a195f8a94"
+    },
+    {
+      "original": "tests/brush_cosmos.browser.cjs",
+      "archived": "experiments/cosmic_threshold/tests/brush_cosmos.browser.cjs",
+      "sha256": "c48a6e44272715fa0f6f1841b4b5fd3614b79e725037672a39e76b2486e465bc"
+    }
+  ]
+}
