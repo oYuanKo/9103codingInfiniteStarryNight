@@ -22,24 +22,7 @@ Users can explore different layers of the artwork by zooming in, moving from the
 | Qingyang Fang / `audio` | Audio-based Interactions |
 | Yang Wu / `time-based` | Time-based Effects & Transitions |
 
-## 小组模块与文件调用说明
-
-### 我们如何分工
-
-项目共用一个 p5.js 应用：Perlin Noise + Randomness 由 Yuan 负责，Audio 由 Qingyang Fang 负责，Time-based 由 Yang Wu 负责。User Input、Zoom 和 Nested Universe 导航也主要由 Yuan 维护。
-
-目前正式版本采用原 Step 6D.3（Mode A）过渡；Audio 还待集成，Time 模块目前在 Yang Wu 的独立 `v3` 分支，尚未合入本次生产版本。上面的职责表保留原有分工记录；Yuan 本次生产开发分支为 `brushv2yuan`。
-
-全组只使用现有的一套全局 `setup()` / `draw()`。请不要在自己的文件里再定义同名函数来替换它们；`sketch.js` 保持简短，由共享控制文件安排运行。
-
-### 哪些文件可以负责什么
-
-| 文件组 | 文件与用途 | 负责人 / 当前状态 |
-|---|---|---|
-| 核心绘画与探索 | `brush_renderer_v2.js` 绘画；`brush_detail_v2.js` 细节；`brush_flow_shader.js` 流动；`zoom_camera.js` 缩放；`nested_universe_v2.js` 世界导航；`star_hover_light_v2.js` 星星交互 | Yuan；已在生产版本实现 |
-| 共享应用基础 | `sketch.js` 入口；`app_controller.js` 帧流程；`input_controller.js` 输入；`group_bridge.js` 小组接口；`index.html` 加载文件；`ui_overlay.js` 操作提示 | 全组协调后修改 |
-| Audio | 独立的音频相关 JS 文件 | Qingyang Fang；待集成 |
-| Time-based | `time-mechanic.js`、`time-atmosphere.js`、`time-integration.js` | Yang Wu；目前仅在独立 `v3` 分支，后续单独集成 |
+## 文件调用说明
 
 ### 如何接入自己的模块
 
