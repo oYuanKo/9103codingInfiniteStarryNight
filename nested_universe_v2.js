@@ -70,6 +70,7 @@ function outerEdgeV2() {
 
 function disposeWorldV2(world) {
     if (!world) return;
+    releaseCosmicWorldV2(world.seed);
     disposeBrushDetailsV2(world.detailSource);
     world.detailSource = null;
     for (const key of ['base', 'motion', 'flowMap']) {
