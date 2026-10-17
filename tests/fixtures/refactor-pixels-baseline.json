@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "provenance": {
+    "runtime": "legacy/sketch.js",
+    "sourceHashes": {
+      "legacy/sketch.js": "efcffc791f27c960d2ae52b6a9d481940d428ca71ed93f18f371d41cc3dc177c",
+      "legacy/debug_gui.js": "713bed15991233b46689b48b2a03f7bad7c7349722f1bf6b58bb752386c4df1b",
+      "legacy/perlin_mechanic.js": "02914c59525b007420253a6723b4fd7e493c7a9ab9f71eb3fed0d89f09df7da0",
+      "legacy/input_mechanic.js": "6ef0479d2e52960ca8a443c66167d9df5ffeb49195da8cad65394f4e597ea78c"
+    },
+    "browser": "155.0.4283.45",
+    "p5": "1.11.11"
+  },
+  "seeds": [
+    12,
+    89,
+    205
+  ],
+  "portalDepths": [
+    0.2,
+    0.6,
+    0.8
+  ],
+  "hashes": {
+    "12": "042fced5d056ff921a128efe5a3761a1c787981388178bdd3200c1208696d419",
+    "89": "77e7a082c09a5eefd794f43c8a16eb713a8e4b7dfeb2b071c4ae6e379a16301e",
+    "205": "e1fc3ff3261af6da111484a394f1a78dd5b9f26521acc0f4fe23b4204ea2abf0",
+    "portal0.2": "6b6820a323b61b4e4ef357872f609170e45e304732436698bd818bbdfa28f802",
+    "portal0.6": "b1e6f988d3a74ab64b08bb88e70d1896ec1d7a4099781ffa7454f497b09128c6",
+    "portal0.8": "7a32ac7d142d8745da3313a1fdef80c67d11ab84f3859e8f09ab5ede8d6ce244"
+  }
+}
