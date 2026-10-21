@@ -61,24 +61,27 @@ const detachAudioModuleV1 = (() => {
     }
     if (tracks[0].fade) tracks[0].fade.gain.value = 1;
 
-    const jingleElement = new Audio('assets/jingle-level-up.wav');
+    const jingleElement = new Audio('assets/starfield-transition.wav');
     jingleElement.preload = 'auto';
     jingleElement.playsInline = true;
     jingleElement.volume = 1;
     const jingleChain = context
-        ? makeCleanChain(context.createMediaElementSource(jingleElement), 0.24, 65, 13500)
+        ? makeCleanChain(context.createMediaElementSource(jingleElement), 0.4, 65, 13500)
         : { level: null, fade: null };
-    jingleElement.volume = context ? 1 : 0.24;
+    jingleElement.volume = context ? 1 : 0.4;
     if (jingleChain.fade) jingleChain.fade.gain.value = 1;
 
     let sceneDepth = 0;
     let activeTrack = 0;
     let disposed = false;
     let started = false;
-    let volume = 0.08;
+    let volume = 0.11;
+    let transitionDuck = 1;
+    let transitionDuckTarget = 1;
     let playbackRate = 1;
     let resumePromise = null;
     const pauseTimers = new Map();
+    let jingleTimer = null;
 
     function setFade(track, value, seconds = 1.1) {
         track.fadeTarget = value;
@@ -152,10 +155,29 @@ const detachAudioModuleV1 = (() => {
 
     function playTransitionJingle() {
         if (disposed) return;
+        transitionDuckTarget = 0.16;
+        if (jingleTimer) clearTimeout(jingleTimer);
         const start = () => {
             if (disposed || (context && context.state !== 'running')) return;
             try { jingleElement.currentTime = 0; } catch (_) {}
+            if (jingleChain.fade && context) {
+                const now = context.currentTime;
+                const fade = jingleChain.fade.gain;
+                fade.cancelScheduledValues(now);
+                fade.setValueAtTime(1, now);
+                fade.setValueAtTime(1, now + 1.25);
+                fade.linearRampToValueAtTime(0, now + 1.5);
+            }
             playElement(jingleElement);
+            jingleTimer = setTimeout(() => {
+                jingleElement.pause();
+                try { jingleElement.currentTime = 0; } catch (_) {}
+                transitionDuckTarget = 1;
+                if (jingleChain.fade && context) {
+                    jingleChain.fade.gain.setValueAtTime(1, context.currentTime);
+                }
+                jingleTimer = null;
+            }, 1500);
         };
         if (!context || context.state === 'running') start();
         else void startAudio().then(start);
@@ -178,18 +200,20 @@ const detachAudioModuleV1 = (() => {
         const visual = state.visual || {};
         const spread = Math.max(0, Math.min(1, Number(visual.hoverSpread) || 0));
         const speed = Math.max(0, Math.min(1, Number(visual.pointerSpeed) || 0));
-        const volumeTarget = 0.08 + spread * 0.82;
+        const volumeTarget = 0.11 + spread * 0.82;
         const rateTarget = 1 + speed * 0.9;
         volume += (volumeTarget - volume) * (1 - Math.exp(-elapsed / 0.38));
         playbackRate += (rateTarget - playbackRate) * (1 - Math.exp(-elapsed / 0.22));
+        const duckTime = transitionDuckTarget < transitionDuck ? 0.09 : 0.55;
+        transitionDuck += (transitionDuckTarget - transitionDuck) * (1 - Math.exp(-elapsed / duckTime));
         for (const track of tracks) {
             const fadeAmount = 1 - Math.exp(-elapsed / 0.32);
             track.fadeAmount += (track.fadeTarget - track.fadeAmount) * fadeAmount;
             if (track.level) {
-                track.level.gain.value = volume * 0.58;
+                track.level.gain.value = volume * 0.58 * transitionDuck;
                 track.fade.gain.value = track.fadeAmount;
             } else {
-                track.element.volume = Math.max(0, Math.min(0.6, volume * 0.58 * track.fadeAmount));
+                track.element.volume = Math.max(0, Math.min(0.6, volume * 0.58 * transitionDuck * track.fadeAmount));
             }
             track.element.playbackRate = playbackRate;
         }
@@ -207,6 +231,7 @@ const detachAudioModuleV1 = (() => {
         offPortal();
         stopUnlockListeners();
         for (const timer of pauseTimers.values()) clearTimeout(timer);
+        if (jingleTimer) clearTimeout(jingleTimer);
         for (const track of tracks) {
             track.element.pause();
             track.element.removeAttribute('src');
