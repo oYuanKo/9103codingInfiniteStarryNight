@@ -1,4 +1,4 @@
-// Time 的补充画面。AI acknowledgement: written with ChatGPT/Codex assistance.
+// ChatGPT/Codex-assisted: supplementary Time drawings.
 // 用课堂的 for、if、数组、sin/cos、line/ellipse，以及 Week 10 的
 // push/pop、translate/rotate/scale 绘图。不重新生成组员的世界。
 

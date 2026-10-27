@@ -1,4 +1,4 @@
-// Time 与小组画面的连接。AI acknowledgement: written with ChatGPT/Codex assistance.
+// ChatGPT/Codex-assisted: Time integration and pause/reset handling.
 // 阅读顺序：先看 time-mechanic.js，再看 time-atmosphere.js，最后看本文件。
 // StarryNight.getState() 和 deltaTime 沿用组员的程序，不是新增课堂示例。
 // deltaTime 的单位是毫秒：由已有 draw() 每帧提供，不再另开一个计时器。

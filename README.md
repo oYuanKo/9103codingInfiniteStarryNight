@@ -23,6 +23,53 @@ Users can explore different layers of the artwork by zooming in, moving from the
 | Yang Wu / `time-based` | Time-based Effects & Transitions |
 
 
+## Time-based mechanic — Yang Wu
+
+My part is to make the night sky change over time. I wanted it to start calmly,
+become more active, and then slowly return to calm.
+
+The whole cycle lasts 60 seconds and repeats:
+
+| Stage | Duration |
+|---|---|
+| Calm | 10 seconds |
+| Active | 10 seconds |
+| Peak | 10 seconds |
+| Recovery | 30 seconds |
+
+As the cycle builds up, the flow gets faster, the added star highlights get
+brighter, more small stars appear, and the extra sky strokes get closer together.
+The changes reach their strongest point at around 30 seconds. During Recovery,
+they gradually go back to the starting values.
+
+The original painting and its main stars stay in place. My changes add extra
+details to the sky, and viewers can still enter the original stars and moon.
+
+### Code structure
+
+- `time-mechanic.js` keeps track of time and calculates the changing values.
+- `time-atmosphere.js` draws the extra stars, highlights and sky strokes.
+- `time-integration.js` connects Time to the group's world, camera and pause controls.
+
+The `TimeMechanic` class keeps the values together. Its `update()` function uses
+elapsed time from the existing draw loop and `lerp()` to move between the starting
+and target values. The drawings use loops, lines, ellipses and transformations.
+
+### How to try it
+
+Watch the painting for one minute to see the full cycle.
+
+- **Space:** pause or continue the Time cycle and flow.
+- **F:** turn flow off or on. Time also pauses while flow is off.
+- **Scroll:** zoom and move between worlds.
+- **Q / W / E:** change the world and start the cycle again from Calm.
+
+Time pauses while a world is loading or a transition is happening. If the
+transition is cancelled, the cycle continues from where it stopped. When the
+world changes, the cycle starts again. It also pauses while the browser tab is hidden.
+
+**AI acknowledgement:** ChatGPT/Codex helped implement and test the Time mechanic and its integration. It uses elapsed time and `lerp()` to animate flow and supplementary star/sky effects.
+
 ## GitHub 使用指南
 
 ### 1. 下载项目（第一次）

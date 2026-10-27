@@ -1,6 +1,5 @@
 // Time-based mechanic — Yang Wu.
-// AI acknowledgement: developed with ChatGPT/Codex assistance from Yang's
-// existing prototype. This class calculates the six gradual changes below.
+// ChatGPT/Codex-assisted: Time cycle and interpolation.
 // 课堂依据：Week 8 的 class；Week 10 第 8–19 页的 lerp()。
 // 这个文件只算时间和数值，不生成世界，也不控制滚轮。
 
