@@ -10,7 +10,7 @@ Coordinate index.html script additions; load optional modules after group_bridge
 and before sketch.js (or after sketch.js while the page is still loading).
 Keep scripts classic scripts unless the team explicitly adopts a module loader.
 Do not redefine p5 setup/draw/keyPressed/mouseWheel or write global width/height.
-Use addEventListener for an Audio start button and remove it in cleanup.
+Use addEventListener for audio gesture fallback and remove it in cleanup.
 Audio permissions, user gesture, microphone access and playback remain Audio's
 responsibility. Nothing in core starts audio or invents time-reactive behaviour.
 
@@ -30,6 +30,12 @@ Otherwise it returns frozen, detached data:
 - canvas: logical width/height (800/600), not CSS display dimensions.
 - loading: whether a requested navigation is waiting for generation.
 - flow: enabled, paused, speed, strength and cursorEnabled.
+- visual: `particles` is the current world's animated brush-mark count plus
+  currently drawn star-hover light strokes; `cursorIntensity` is normalized
+  cursor disturbance used by the flow shader; `hoverSpread` is the normalized
+  visible star-halo spread, and `pointerSpeed` is smoothed screen-pointer speed
+  normalized to 900 logical pixels/second. These detached values are available
+  to optional modules such as audio and do not expose renderer resources.
 
 During outward transitions the parent is rendered before navigation commits;
 universe still names the originating committed world. Seeds are not identities.
@@ -46,10 +52,10 @@ possible. Thrown errors/rejected promises disable that subscription and produce
 one warning, rather than interrupting core rendering.
 
 ```js
-// audio_module.js: lifecycle skeleton only, no audio-reactive mapping supplied.
+// Example optional-module lifecycle shape (audio_module.js implements its own mapping).
 function attachAudioModule(bridge) {
   const off = bridge.onFrame((dt, state) => {
-    // Read state here. Audio startup belongs to your own user-gesture button.
+    // Read state here. Browser autoplay restrictions may require a user gesture.
   });
   return () => { off(); /* stop/disconnect your own audio resources here */ };
 }
