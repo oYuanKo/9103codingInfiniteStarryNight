@@ -72,7 +72,11 @@ I also connected Space with Qingyang Fang's Audio module so the picture, music
 and transition sounds pause together and continue from the same place. The music
 keeps its own scene and mouse controls.
 
-**AI acknowledgement:** ChatGPT/Codex helped implement and test the Time mechanic and shared pause integration. The Time code uses elapsed time and `lerp()` to animate flow and supplementary star/sky effects.
+I also noticed a small dark gap in the centre of the sky vortex. I widened the
+existing centre brushstroke to fill it, and checked that the flow animation,
+zoom and star navigation still worked correctly.
+
+**AI acknowledgement:** ChatGPT/Codex helped with the Time mechanic, shared pause and vortex fix. The code uses elapsed time and `lerp()` for Time changes, and widens one brushstroke to fill the gap.
 
 ## GitHub 使用指南
 

@@ -308,13 +308,22 @@ function* buildBrushV2Steps(seed, preservePrevious = false) {
 
             const angle = brushV2Angle(px, py);
             const colour = brushV2Color(px, py);
+            const length = random(15, 25);
+            let weight = random(8, 12);
+
+            // Yang Wu, Codex-assisted: widen the existing centre stroke to cover the gap.
+            // Keeping the same strokes and random calls also preserves zoomed details.
+            if (abs(x - width * 0.48) < step / 2 &&
+                abs(y - height * 0.32) < step / 2) {
+                weight = 32;
+            }
 
             paintV2Stroke(
                 brushV2.base,
                 px, py,
                 angle,
-                random(15, 25),
-                random(8, 12),
+                length,
+                weight,
                 colour
             );
         }
