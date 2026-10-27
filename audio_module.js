@@ -82,6 +82,62 @@ const detachAudioModuleV1 = (() => {
     let resumePromise = null;
     const pauseTimers = new Map();
     let jingleTimer = null;
+    // Codex-assisted (Yang Wu): shared pause and audio-unlock fixes.
+    let audioPaused = false;
+    const pausedElements = new Set();
+    const audioTimers = new Set();
+
+    function startAudioTimer(timer) {
+        timer.endsAt = performance.now() + timer.remaining;
+        timer.id = setTimeout(() => {
+            audioTimers.delete(timer);
+            timer.id = null;
+            timer.callback();
+        }, timer.remaining);
+    }
+
+    function createAudioTimer(callback, milliseconds) {
+        const timer = { callback, remaining: milliseconds, endsAt: 0, id: null };
+        audioTimers.add(timer);
+        if (!audioPaused) startAudioTimer(timer);
+        return timer;
+    }
+
+    function cancelAudioTimer(timer) {
+        if (!timer) return;
+        clearTimeout(timer.id);
+        audioTimers.delete(timer);
+    }
+
+    function syncAudioPause(paused) {
+        if (paused === audioPaused) return;
+        audioPaused = paused;
+        if (audioPaused) {
+            // Remember only sounds that were playing, keeping their positions.
+            for (const element of [...tracks.map(track => track.element), jingleElement]) {
+                if (!element.paused && !element.ended) pausedElements.add(element);
+                element.pause();
+            }
+            // Keep the remaining fade/cue time instead of letting it expire.
+            for (const timer of audioTimers) {
+                timer.remaining = Math.max(0, timer.endsAt - performance.now());
+                clearTimeout(timer.id);
+                timer.id = null;
+            }
+            if (context) void context.suspend().catch(error => {
+                console.warn('[Audio] Could not pause audio:', error);
+            });
+        } else {
+            // The context also freezes/resumes its gain and filter automation.
+            if (context) void context.resume().catch(error => {
+                console.warn('[Audio] Could not resume audio:', error);
+            });
+            if (!started && pausedElements.size === 0) pausedElements.add(tracks[activeTrack].element);
+            for (const element of pausedElements) playElement(element);
+            pausedElements.clear();
+            for (const timer of audioTimers) startAudioTimer(timer);
+        }
+    }
 
     function setFade(track, value, seconds = 1.1) {
         track.fadeTarget = value;
@@ -94,19 +150,26 @@ const detachAudioModuleV1 = (() => {
     }
 
     function playElement(element) {
+        if (disposed) return;
+        if (audioPaused) {
+            pausedElements.add(element);
+            return;
+        }
         const result = element.play();
         if (result && typeof result.then === 'function') {
             result.then(() => {
+                if (disposed || audioPaused) { element.pause(); return; }
                 started = true;
                 stopUnlockListeners();
             }).catch(error => {
+                if (error.name === 'AbortError') return; // An intentional pause can cancel a pending play.
                 console.warn('[Audio] Playback was blocked or failed:', element.currentSrc || element.src, error);
             });
         }
     }
 
     async function startAudio() {
-        if (disposed) return;
+        if (disposed || audioPaused) return;
         if (context && context.state !== 'running') {
             if (!resumePromise) {
                 resumePromise = context.resume().catch(error => {
@@ -115,15 +178,31 @@ const detachAudioModuleV1 = (() => {
             }
             await resumePromise;
         }
-        if (context && context.state !== 'running') return;
+        if (disposed || audioPaused || (context && context.state !== 'running')) return;
         for (const track of tracks) track.element.playbackRate = playbackRate;
         playElement(tracks[activeTrack].element);
     }
 
     function startFromGesture() {
+        if (disposed || audioPaused) return;
+        // Retry startup resume inside the user gesture.
+        if (context && context.state !== 'running') {
+            void context.resume().catch(error => {
+                console.warn('[Audio] Gesture could not resume audio:', error);
+            });
+        }
         // Call play synchronously during the gesture for browser autoplay policies.
         playElement(tracks[activeTrack].element);
         void startAudio();
+    }
+
+    function syncPauseFromKey(event) {
+        if (disposed || event.key !== ' ' || event.repeat) return;
+        if (event.target?.closest('button, input, textarea, select, [contenteditable="true"]')) return;
+        const state = bridge.getState();
+        // Resume inside the actual key gesture so the browser allows first play.
+        // Input still owns flow.paused; onFrame confirms its state after the key.
+        if (state.ready) syncAudioPause(!state.flow.paused);
     }
 
     function stopUnlockListeners() {
@@ -140,13 +219,13 @@ const detachAudioModuleV1 = (() => {
         const oldTrack = tracks[previous];
         const newTrack = tracks[activeTrack];
         const pending = pauseTimers.get(previous);
-        if (pending) clearTimeout(pending);
+        if (pending) cancelAudioTimer(pending);
         newTrack.element.currentTime = 0;
         newTrack.element.playbackRate = playbackRate;
-        if (started && (!context || context.state === 'running')) playElement(newTrack.element);
+        if (started && (audioPaused || !context || context.state === 'running')) playElement(newTrack.element);
         setFade(oldTrack, 0);
         setFade(newTrack, 1);
-        const timer = setTimeout(() => {
+        const timer = createAudioTimer(() => {
             if (activeTrack !== previous) oldTrack.element.pause();
             pauseTimers.delete(previous);
         }, 1250);
@@ -156,9 +235,9 @@ const detachAudioModuleV1 = (() => {
     function playTransitionJingle() {
         if (disposed) return;
         transitionDuckTarget = 0.16;
-        if (jingleTimer) clearTimeout(jingleTimer);
+        if (jingleTimer) cancelAudioTimer(jingleTimer);
         const start = () => {
-            if (disposed || (context && context.state !== 'running')) return;
+            if (disposed || (!audioPaused && context && context.state !== 'running')) return;
             try { jingleElement.currentTime = 0; } catch (_) {}
             if (jingleChain.fade && context) {
                 const now = context.currentTime;
@@ -169,7 +248,7 @@ const detachAudioModuleV1 = (() => {
                 fade.linearRampToValueAtTime(0, now + 1.5);
             }
             playElement(jingleElement);
-            jingleTimer = setTimeout(() => {
+            jingleTimer = createAudioTimer(() => {
                 jingleElement.pause();
                 try { jingleElement.currentTime = 0; } catch (_) {}
                 transitionDuckTarget = 1;
@@ -179,7 +258,7 @@ const detachAudioModuleV1 = (() => {
                 jingleTimer = null;
             }, 1500);
         };
-        if (!context || context.state === 'running') start();
+        if (audioPaused || !context || context.state === 'running') start();
         else void startAudio().then(start);
     }
 
@@ -196,6 +275,8 @@ const detachAudioModuleV1 = (() => {
 
     const offFrame = bridge.onFrame((dt, state) => {
         if (!state.ready) return;
+        syncAudioPause(state.flow.paused);
+        if (audioPaused) return;
         const elapsed = Math.max(1, Math.min(Number(dt) || 16.67, 100)) / 1000;
         const visual = state.visual || {};
         const spread = Math.max(0, Math.min(1, Number(visual.hoverSpread) || 0));
@@ -219,6 +300,7 @@ const detachAudioModuleV1 = (() => {
         }
     });
 
+    window.addEventListener('keydown', syncPauseFromKey, true);
     window.addEventListener('pointerdown', startFromGesture, true);
     window.addEventListener('keydown', startFromGesture, true);
     window.addEventListener('wheel', startFromGesture, true);
@@ -229,9 +311,11 @@ const detachAudioModuleV1 = (() => {
         disposed = true;
         offFrame();
         offPortal();
+        window.removeEventListener('keydown', syncPauseFromKey, true);
         stopUnlockListeners();
-        for (const timer of pauseTimers.values()) clearTimeout(timer);
-        if (jingleTimer) clearTimeout(jingleTimer);
+        for (const timer of audioTimers) cancelAudioTimer(timer);
+        pauseTimers.clear();
+        pausedElements.clear();
         for (const track of tracks) {
             track.element.pause();
             track.element.removeAttribute('src');

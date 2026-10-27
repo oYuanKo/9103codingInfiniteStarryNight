@@ -57,9 +57,9 @@ and target values. The drawings use loops, lines, ellipses and transformations.
 
 ### How to try it
 
-Watch the painting for one minute to see the full cycle.
+Watch the painting for one minute to see the full cycle. Click the painting once to start music.
 
-- **Space:** pause or continue the Time cycle and flow.
+- **Space:** pause or continue the Time cycle, flow and music.
 - **F:** turn flow off or on. Time also pauses while flow is off.
 - **Scroll:** zoom and move between worlds.
 - **Q / W / E:** change the world and start the cycle again from Calm.
@@ -68,7 +68,11 @@ Time pauses while a world is loading or a transition is happening. If the
 transition is cancelled, the cycle continues from where it stopped. When the
 world changes, the cycle starts again. It also pauses while the browser tab is hidden.
 
-**AI acknowledgement:** ChatGPT/Codex helped implement and test the Time mechanic and its integration. It uses elapsed time and `lerp()` to animate flow and supplementary star/sky effects.
+I also connected Space with Qingyang Fang's Audio module so the picture, music
+and transition sounds pause together and continue from the same place. The music
+keeps its own scene and mouse controls.
+
+**AI acknowledgement:** ChatGPT/Codex helped implement and test the Time mechanic and shared pause integration. The Time code uses elapsed time and `lerp()` to animate flow and supplementary star/sky effects.
 
 ## GitHub 使用指南
 
