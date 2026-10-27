@@ -139,23 +139,27 @@ errors. Limit your own allocations and dispose audio nodes/timers/listeners.
 
 ## Branch workflow
 
-Create a separate branch from the agreed brushv2yuan baseline for each member
+Create a separate branch from the latest shared main baseline for each member
 (e.g. audio/<name>, time/<name>). Keep module changes small, describe API needs,
 and run regressions before review. Review core-file changes together; integrate
 one member at a time and retest. Do not overwrite another member's uncommitted
 files or merge the historical prototype back into the active application.
+Preserve the existing v3 Time-based work; review and integrate it separately
+after updating its branch with main through the agreed group workflow.
 
-## Experimental Cosmic Threshold (Step 11)
+## Accepted production portal (Step 11 finalisation)
 
-The prototype is enabled by default. Set `cosmicThresholdSettingsV2.enabled = false`
-in DevTools (or change its default in `cosmic_threshold_v2.js`) to recover the accepted portal.
-No new presentation controls or integration API are introduced. Both camera equations
-and the world graph are unchanged. Tests that compare archived appearance disable it;
-the original-only JSON fixture must not be regenerated from this prototype.
+Mode A, the original Step 6D.3 portal, is now the only production renderer.
+There are no Cosmic Threshold flags, experimental script dependencies or review
+mode switches. The integration API and camera/navigation contracts are unchanged.
+Historical B/C sources, tests and comparison notes are preserved under
+[experiments/cosmic_threshold/](experiments/cosmic_threshold/README.md); those
+archived suites are not production tests or standalone demos.
 
-Run `node tests/cosmic.browser.cjs` for enabled/disabled depth screenshots, exact
-endpoints, settled reversal, real wheel pause/reversal, cache and paired cost checks.
-Run the existing navigation, portal, spatial, detail, hierarchy, hover, hover_detail,
-app and refactor browser suites as usual. See [tests/STEP11.md](tests/STEP11.md) for
-implementation boundaries, evidence filenames and visual limitations. PNG/WebM/log
-outputs remain ignored; no fixture reconstruction is required for the new test.
+Run node tests/production_portal.browser.cjs for same-environment accepted-A
+pixel equivalence and absence of experimental resources. Its version-controlled
+reference works on a fresh clone without generated logs. See
+[tests/PRODUCTION_PORTAL.md](tests/PRODUCTION_PORTAL.md) for before/after evidence.
+Also run navigation, portal, spatial, detail, hierarchy, hover, hover_detail,
+app and refactor browser suites. Generated PNG/WebM/log files remain ignored.
+The original-only refactor fixture and its provenance are unchanged.

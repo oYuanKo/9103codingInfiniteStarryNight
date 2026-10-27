@@ -1,415 +1,119 @@
 # 9103codingInfiniteStarryNight
 Creative coding major project (Final)
+# Infinite Starry Night 🌌
 
-## Step 6C: bidirectional nested universes
+## Project Overview
 
-Scroll into a major star or the moon at maximum zoom to enter its universe.
-Scroll out at minimum zoom to return through the same star. With no parent yet,
-an outer universe is painted incrementally, with its moon explicitly linked to
-the old universe. Scroll back into that moon to revisit the old universe.
-All existing Q/W/E seed, F shader, Space pause, C cursor, R camera and strength
-controls remain available. R cancels navigation before resetting the camera.
+**Course:** Creative Coding  
+**Artwork:** *The Starry Night* – Vincent van Gogh  
+**Platform:** p5.js (JavaScript)
 
-### Navigation and ownership
+Our project reinterprets Van Gogh's *The Starry Night* as an interactive and dynamic artwork.
 
-- Persistent world nodes have stable identity independent of seed collisions.
-  Each parent/star edge stores its child and parent camera. Creating an outer
-  parent adds an edge to the existing node, rather than replacing its history.
-- Navigation goes through idle, pending generation and portal states. A portal
-  always uses the same coordinate: 0 is parent, 1 is child. Wheel distance sets
-  the target; frame-independent smoothing follows it. Waiting alone cannot
-  advance that target. Both loading requests and active portals can be reversed.
-- The existing painting and flow-map generators run serially with the existing
-  approximate 4 ms batch budget. Pending wheel distance is retained while they
-  run. A generation job owns isolated partial resources and always restores the
-  displayed world after each batch; no synchronous navigation rebuild is used.
-- Nodes own completed textures. Cancelled portals retain reusable worlds. The
-  LRU cache targets eight resident worlds, but pins the current ancestor chain
-  and both navigation endpoints, plus room for one reusable neighbour when deep
-  ancestry exceeds the target. Eviction removes graphics and entries in the
-  shared p5 WebGL texture cache; seed, links, cameras and animation time remain
-  for deterministic incremental reconstruction. Seed reset disposes the graph
-  and any partial job. The texture-cache cleanup uses the p5 1.11.11 renderer
-  internals used by this page and should be checked when upgrading p5.
+Through generative visuals, sound, and time-based changes, we aim to bring the painting to life and create an immersive experience.
 
-### Validation
+Users can explore different layers of the artwork by zooming in, moving from the night sky into space and stars, creating a journey through interconnected worlds.
 
-Serve this directory with any static HTTP server for manual use. The automated
-browser test starts its own localhost server. With Node.js, Playwright and
-Microsoft Edge installed, run:
+## Team Responsibilities
 
-```sh
-node --check nested_universe_v2.js
-node --check sketch.js
-node tests/navigation.browser.cjs
+| Member / Branch | Main Responsibility |
+|---|---|
+| Yuan / `yuan` | Perlin Noise & Randomness + User Input (Zoom & Navigation) |
+| Qingyang Fang / `audio` | Audio-based Interactions |
+| Yang Wu / `time-based` | Time-based Effects & Transitions |
+
+
+## GitHub 使用指南
+
+### 1. 下载项目（第一次）
+
+```bash
+git clone https://github.com/oYuanKo/9103codingInfiniteStarryNight.git
+cd 9103codingInfiniteStarryNight
 ```
 
-Set `BROWSER_CHANNEL=chrome` to use installed Chrome. The page loads p5 1.11.11
-from its existing CDN, so internet access is needed. The test uses real browser
-wheel/key events for navigation and controlled frame stepping for cache stress.
-It covers Child/Parent/Child, two inner and outer levels, reversal and stationary
-progress, loading cancellation, Q/W/E and other controls, texture disposal,
-ancestor retention and pixel-identical regeneration. It saves an ignored
-`tests/step6c.png` screenshot and fails on browser JavaScript/WebGL errors.
+### 2. 创建自己的 Branch（第一次）
 
-### Deliberate limits
-
-The portal is still the Step 6B crossfade, with a static child layer during the
-blend; continuous star-interior geometry is deferred to Step 6D. The 4 ms budget
-is cooperative, not a hard frame-time ceiling: existing generator steps are
-unchanged. First visits or evicted worlds may wait at a zoom boundary while
-generation completes. Retaining the full ancestor chain can exceed the cache
-target on deep journeys, and lightweight visited-world metadata persists until
-a seed reset. This is not a hard memory cap or an unlimited-depth soak test.
-
-## Step 6D: painted spatial portals and lightweight detail
-
-This supersedes the Step 6C crossfade described above. The existing graph, seeds,
-cache policy, generator budgets and wheel progress are retained. Painting
-settings, palette and the original artwork generators are unchanged.
-
-- Both worlds are sampled in one screen-resolution shader pass, reusing the
-  existing WebGL buffer and cached paintings/flow maps. No renderer or full-size
-  offscreen texture is allocated per portal.
-- The parent star and halo grow with the existing logarithmic camera. A soft
-  aperture expands from inside the star, with stable world-space pigment noise
-  and ragged edges. Pixels outside it remain entirely parent. The child grows
-  around the same screen anchor. A bounded lens at small scales avoids repeated
-  or mirrored image edges and becomes the ordinary child camera at the endpoint.
-  This is a reversible 2D spatial portal, not 3D geometry.
-- Both worlds keep their own animated flow time. Cursor radius is measured in
-  screen pixels; displacement uses each mapping's local scale. Cursor state is
-  preserved across the boundary. Outward transitions start from the actual child
-  camera, including a camera still easing toward minimum zoom.
-- LOD is a minimal procedural pigment layer aligned to the existing flow, seeded
-  without touching p5's generation RNG. Two detail scales fade in with zoom,
-  beginning around 1.6x and 5x. At 1x the layer contributes exactly zero. It
-  subtly modulates existing colours without palette changes or brush rebuilding.
-  It does not reconstruct higher-resolution houses, trees or stroke geometry;
-  the original cache can still look soft at extreme magnification.
-  `brushLODSettings` in `brush_flow_shader.js` enables a local on/off comparison.
-- F still freezes/disables flow, Space pauses it, and C controls cursor effects.
-  Seed and camera shortcuts retain their previous behavior. F off still uses
-  the compositor so spatial portals remain available.
-
-Additional checks, with the same Playwright/Edge prerequisites as above:
-
-```sh
-node --check brush_flow_shader.js
-node tests/navigation.browser.cjs
-node tests/portal.browser.cjs
+```bash
+git switch -c 自己的名字
+git push -u origin 自己的名字
 ```
 
-The portal suite verifies pixel-identical normal/portal endpoints, identical
-images when retracing a depth with animation paused, unchanged parent pixels
-outside the aperture, LOD absence at 1x and presence at 10x, cursor locality,
-constant texture/buffer counts during repeated rendering, and the outward
-camera boundary. It saves ignored `tests/step6d-*.png` screenshots and reports
-headless frame intervals. These short local samples are not a performance
-guarantee for other GPUs or a long-duration memory soak test. The original
-800x600 output resolution and cooperative generation-budget limits remain.
+每个人在自己的 branch 开发，不要直接修改 `main`。
 
-## Step 6D.1: exact brush replay and painterly ownership
+### 3. 开始写代码前（同步 main）
 
-This supersedes the Step 6D procedural-grain LOD, circular aperture, and bounded
-child lens described above. It preserves the Step 6C graph, wheel target,
-preload jobs, caches, seeds and controls.
-
-### Actual geometry at zoom
-
-- `paintV2Stroke()` records every static brush stroke: position, angle, length,
-  width, RGB, opacity, bounds and original drawing order. This covers sky,
-  stars/halos, mountains, village and cypress. Records do not call random/noise
-  or modify the painted output. Completed records use Float64Array; a 64-unit
-  spatial grid finds visible strokes. Seed 12 has 22,858 strokes (2.27 MiB of
-  numeric records plus its spatial index).
-- `brush_detail_v2.js` replays the original Bezier body and highlight into local
-  1536x1152 2D textures at 3x, 6x, 12x and successive doubled scales. Selection
-  preserves global paint order, conservative bounds include round caps, and
-  overscan covers flow/cursor displacement. It is not an enlarged bitmap,
-  sharpening filter, nearest-neighbour sampling or added grain.
-- One job advances per frame under a cooperative 2 ms paint budget. Existing
-  detail remains visible while replacement textures are built. Only completed
-  textures are published, with a 140 ms asset-refinement blend; this blend never
-  changes navigation progress. No brushes are rebuilt on settled warm frames.
-- A global cap of five detail textures INCLUDES the in-progress job, previous
-  refinement textures and inactive cached views: 33.75 MiB RGBA texture payload
-  maximum, plus approximately the same amount of 2D backing storage and browser
-  overhead. World disposal/seed reset also deletes their detail GPU entries.
-  This is an additional detail-cache bound, not a cap on all ancestor worlds.
-  Recording adds CPU memory per resident world; ancestor retention is unchanged.
-
-### Painterly world transformation
-
-Early zoom (first 38% of the transition) contains only parent brushwork. Later,
-overlapping elongated footprints follow the local flow and transfer patches of
-paint to the child. There is no radius, circle boundary or independent child
-frame. Flow directions also blend through the middle. The child starts as a
-crop rather than a miniature painting and continuously resolves to its ordinary
-camera. Both paths are functions of the same scroll-controlled depth, so reverse
-scroll retraces them. The old shader-grain layer has been removed.
-
-Global flow is capped in screen pixels at deep zoom (6 px at default strength,
-or the explicitly selected strength if greater). Cursor displacement remains
-screen-scaled. This keeps the existing flow at ordinary scale without multiplying
-a 5 px wobble into a 60 px distortion at 12x.
-
-### Verification and limits
-
-```sh
-node tests/navigation.browser.cjs
-node tests/portal.browser.cjs
-node tests/detail.browser.cjs
+```bash
+git switch main
+git pull --ff-only origin main
+git switch 自己的名字
+git merge main
 ```
 
-The detail suite compares the complete replay against the original base painting,
-compares 3x/6x/12x crops against direct geometry rendering, and saves paired
-`tests/step6d1-sharp-*.png` / `tests/step6d1-cache-*.png` images plus eight transition
-frames. It checks stable-depth pixels, early parent-only rendering, reversal,
-endpoint matching, bounded cache churn, seed-reset cleanup, warm GPU-readback
-frame time and cold detail-request time. The portal suite disables detail to
-isolate its endpoint/cursor tests; the detail suite tests the combined path.
+### 4. 写完代码后（上传修改）
 
-Texture allocation, spatial lookup and initial GPU upload are indivisible and
-may exceed the 2 ms cooperative budget. Rapid movement can briefly use the old
-cache while sharper detail arrives. This replays the original geometry: very
-large strokes remain large, though their edges and highlights are now resolved.
-The transition is still a 2D paint-region blend, not a one-to-one morph of each
-parent stroke into a child stroke. Short desktop tests are not a long-duration
-memory soak or a guarantee for integrated/mobile GPUs.
+```bash
+git add .
+git commit -m "描述本次修改"
+git push
+```
 
-## Step 6D.2 �� hierarchical paint detail and continuous depth (local)
+### 5. 合并到 Main
 
-This supersedes the Step 6D.1 texture dimensions, memory figures and late
-ownership thresholds described above. World graph, cameras, controls, base
-painting and incremental world generation are unchanged.
+在 GitHub 网站上创建 **Pull Request**：
 
-- Exact brush replay is retained. Each local cache is a 2048x1536 atlas with
-  three 1024x768 panels: original geometry, meso brushlets, and meso + finer
-  brushlets. The fourth panel is unused padding. The original paint order is
-  replayed independently in each panel so hidden strokes cannot leak through.
-- Micro-brushes are actual cubic Bezier strokes placed inside the original
-  cubic's paint body. Seed + source stroke ID + layer + strand determine their
-  placement, length, width, opacity and modest light/dark variation. Original
-  direction/curvature dominate; the existing local Perlin flow adjusts the
-  curvature. Neither randomSeed nor noiseSeed is touched during detail work.
-- Two finite levels fade in at 2.4�C6x and 6�C16x. They are interpolated in the
-  shader from cached geometry, without rerasterising on each wheel event.
-  Fine geometry is omitted in low-resolution atlases where its depth weight
-  is zero. A warm finer atlas can replace it with the existing 140 ms loading
-  refinement. This asset fade is time based; navigation depth is not.
-- Spatial indexing, a cooperative 2 ms work budget, one job, and the five-atlas
-  global LRU cap remain. The cap includes unfinished and fading atlases:
-  **60 MiB RGBA GPU payload plus approximately 60 MiB CPU canvas storage**,
-  excluding browser overhead and existing world textures. Stale jobs are
-  cancelled when their source/view/scale no longer serves the requested view.
-  World disposal and seed reset remove both canvas and shared GL cache entries.
-- Depth is no longer delayed until 38%. A broad star-centred, flow-aligned
-  influence and existing brush footprints gently offset local depth. They do
-  not cut an aperture. Child pigment sampled along its flow first recolours
-  parent paint while retaining parent luminance; child structure resolves
-  throughout the same smooth depth curve. Flow directions turn on the unit
-  circle, avoiding the zero-vector discontinuity of opposite directions.
-- **This is not matched parent/child stroke morphing.** Micro detail is real
-  geometry; world colour transfer, flow turning and structure blending are
-  shader approximations. Mid-transition double exposure remains possible.
-  Two detail levels do not supply infinite complexity; large parent strokes
-  retain their original silhouette and broad highlight. Existing child camera
-  framing still resolves a crop to the full child composition.
+`自己的 branch → main`
 
-Run `node tests/hierarchy.browser.cjs` in addition to the three browser suites
-above (Playwright and Edge required). It writes paired micro/replay crops at
-3x/6x/12x/24x and `tests/step6d2-transition-{20,40,60,80}.png`. It checks atlas
-regeneration, settled reversal, early evolution, endpoints, stale jobs, cache
-bounds, reset cleanup, GPU-readback timings and cold atlas arrival. The original
-detail suite disables micro shading to continue checking exact base geometry.
-Geometry generation must match exactly after regeneration. GPU-backed 2D atlas
-and shader pixels may differ by a few raster/compositing rounding
-values between rebuilds; the test bounds that tolerance explicitly. Browser timing is
-machine dependent. Cold detail takes multiple frames; old paint remains visible
-until completion. These checks do not establish subjective visual naturalness
-or a long-duration memory-leak guarantee.
+检查后点击 **Merge pull request**。
 
-## Step 6D.3 �� spatial direction and composition reconstruction
+### Useful Commands
 
-This replaces the 3x-to-1x child crop in earlier steps. Previously the parent
-zoomed in while every recognizable child feature shrank, even with identical
-wheel direction. A finite 2D image cannot start as a magnified crop, monotonically
-magnify, and finish as a full 1x view without changing the spatial model.
+| Command | Description |
+|---|---|
+| `git branch` | 查看本地分支 |
+| `git switch 分支名` | 切换分支 |
+| `git status` | 查看修改状态 |
+| `git pull` | 拉取当前分支的最新代码 |
+| `git push` | 上传已提交的修改 |
 
-The minimal approximation here treats child paint as a virtual plane approaching
-from 0.85x to its existing endpoint camera. For progress p, its relative scale is
-`exp(-log(1 / .85) * (1-p))`. Both parent and child scales increase monotonically
-on inward scroll. The endpoint's world point under the entry star stays anchored
-throughout: `child.xy = anchor + (endpoint.xy - anchor) * scale`. At p=1 this is
-exactly the saved endpoint camera (including an unsettled outward origin camera).
-The existing begin/finish/navigation logic is unchanged; no hidden camera reset
-or time-driven completion was added. Zoom rate is not identical between parent,
-child and the subsequent ordinary camera; this is direction/position continuity,
-not a physically uniform 3D fly-through.
+## 文件调用说明
 
-Child composition is not rendered as a framed distant plane. During its virtual
-approach, a small peripheral region samples reflected paint beyond the bounded
-canvas, avoiding stretched edge pixels; this region vanishes at the endpoint.
-This continuation is an approximation and can show repeated peripheral patterns.
-Ordinary rendering and endpoint samples do not use reflection.
+### 如何接入自己的模块
 
-The shader separates local pigment reconstruction from sharp structure:
+请尽量把自己的功能写在独立 JS 文件里，不要直接改复杂的 Camera、Portal、Brush Detail 或 Shader 内部逻辑。`group_bridge.js` 已提供以下实际接口，模块应在它加载后使用：
 
-- Entry location, local flow, existing brush footprints and a terrain bias
-  schedule gradual regional reveal. Sky and landscape need not appear together.
-- A low-contrast carrier uses colours sampled from the child's own painting,
-  while a small bounded residual retains existing replay/micro relief.
-- Parent contrast retires locally before sharp child structure takes over.
-  Overlapping smooth ramps avoid hard stage boundaries; no new noise, global
-  framebuffer blur, LOD level, texture or WebGL buffer is introduced.
-- Flow direction interpolation and cursor sampling are retained. All navigation
-  and composition weights depend on reversible wheel depth. Normal animated
-  flow continues unless paused; cache arrival still has its existing asset fade.
+- `StarryNight.getState()`：读取当前状态；未就绪时 `ready` 为 false。
+- `StarryNight.setFlowSpeed(value)` / `StarryNight.setFlowStrength(value)`：设置允许调整的 Flow 参数；接受有限数字，分别限制在 0–3 / 0–30。
+- `StarryNight.onFrame(callback)`：接收每帧的 `(dt, state)`。
+- `StarryNight.onUniverseChanged(callback)`：接收含 `previous`、`current` 的世界变化事件。
+- `StarryNight.onPortal(callback)`：接收过渡事件，包含 `phase`、进度等信息。
 
-This remains shader colour/structure reconstruction between independent images,
-not matching or morphing individual parent/child Beziers. Some blending traces,
-contrast flattening and peripheral reflection may be visible. Monotonic camera
-numbers and endpoint tests cannot prove that the experience feels natural.
+以上订阅方法都会返回取消订阅函数。最简单的例子：
 
-Run `node tests/spatial.browser.cjs` in addition to the existing four suites.
-It saves `tests/step6d3-star-{0,1,2}-{20,40,50,60,70,80,90}.png`, checks 101 camera
-samples per entry, anchored coordinates, stopped/reversed frames at 30/50/70%,
-and actual wheel pause/reversal. Pixel reversal freezes cache selection briefly
-so it measures the spatial path rather than asset arrival. Two recordings are
-saved: `step6d3-depth-roundtrip.webm` is a controlled depth sweep with live flow;
-`step6d3-wheel-roundtrip.webm` uses actual wheel events and normal navigation.
-Generated PNG/WebM/log files are already ignored by Git.
+```javascript
+const unsubscribe = StarryNight.onFrame((dt, state) => {
+  if (!state.ready) return;
+  // 在这里更新自己的模块；dt 的单位是毫秒。
+});
+// 不再需要时调用 unsubscribe();
+```
 
-## Step 7A �� painterly star hover light
+`onFrame` 在当前帧绘制完成后执行，修改通常影响下一帧。若要画新的图层，请先和组员协调一个安全的绘制调用位置，不要重新定义全局 `draw()`；状态订阅接口并不等同于图层绘制接口。
 
-`star_hover_light_v2.js` adds temporary cubic/comma brush geometry over the final
-2D painting, using the existing world camera. It does not repaint the cached
-world, change global cursor strength, add bloom, allocate textures, or introduce
-another LOD layer. It is called once per main draw after the normal/portal image.
+### 一起开发时的小约定
 
-Only moon and major stars have records (120 / 96 strokes). Seed, star ID and
-stroke index deterministically select radius, direction, curvature, thickness,
-opacity and a cream/gold/pale-yellow palette with occasional blue-grey outer
-strokes. Tangential direction is influenced by the world's existing flow map.
-The core is left clear. Strokes are distributed irregularly across the halo;
-there is no moving circular ring or particle emitter.
+先同步最新 `main`，再在自己的分支开发；尽量只修改自己模块的 JS 文件。改 `index.html`、`app_controller.js`、`group_bridge.js`、`brush_flow_shader.js` 等共享文件前先沟通，不直接覆盖别人的实现。测试后创建 Pull Request，经检查再合入 `main`。已有 `v3` 工作继续保留，之后单独审查和集成，不要用 `main` 替换它。
 
-Proximity is continuous from the outer halo toward the core. Intensity eases in
-and out; dwell accumulates up to four seconds. An outward sequence of individual
-stroke fades reveals more of the fixed geometry over the first few seconds.
-Leaving decays both intensity and dwell. Gentle tangential drift is bounded in
-screen pixels, and a small independent opacity variation adds breathing.
+详细接口和测试见 [GROUP_INTEGRATION.md](GROUP_INTEGRATION.md)；开发过程见 [开发历史](docs/DEVELOPMENT_HISTORY.md)，未采用的实验保存在 [实验档案](experiments/cosmic_threshold/README.md)。
 
-The ordinary cursor disturbance remains separate. C disables both cursor effects;
-Space freezes hover growth/drift as well as the existing animation; F freezes
-flow-related drift but leaves hover growth usable. During portals the parent
-light withdraws over progress 0�C.42, and child light joins over .72�C1. Hidden
-worlds do not accumulate dwell. At the endpoints, cameras and hover state match
-the corresponding normal view. Hover itself is time-dependent; it does not
-change wheel-driven navigation progress.
 
-Only the visible world (or two portal worlds) retains geometry/state. Leaving a
-world drops its temporary hover state on the next rendered frame. There are no
-GPU resources to free; returning regenerates identical geometry, with fresh dwell.
+## Notes
 
-`node tests/hover.browser.cjs` saves before/early/dwell/fade PNGs for moon and
-major-1, a short `tests/step7a-hover.webm`, plus zoom/portal frames. It checks inner
-core pixel stability with flow disabled, outward growth, decay, type filtering,
-resource reuse, pause/C/seed reset, actual zoom/portal reversal, rapid switching,
-and warmed frame/overlay timing. Existing navigation/portal/detail suites still
-cover the underlying systems. Generated media/logs remain ignored by Git.
+- Always work on your own branch.
+- Pull and merge the latest `main` before starting new work.
+- Keep individual features in separate `.js` files where possible.
+- Use Pull Requests to merge completed features into `main`.
+- Communicate before editing shared files such as `sketch.js`.
 
-Limits: this is a sharp vector overlay, not pigment baked into the world's
-texture; it follows sampled flow gently rather than receiving the entire GPU
-warp. Portal light intentionally recedes through the middle of the transition.
-Very deep zoom can expose differences between these temporary curves and the
-base paint. Naturalness and preferred intensity still require visual judgement.
-
-## Step 7B - zoom-aware hover paint detail
-
-The original 96/120 macro light strokes and all Step 7A interaction remain intact.
-Each visible macro can lazily cache 9 meso and 15 micro pigment paths. These are
-short segments of its original cubic, with inherited tangent/curvature, bounded
-normal offsets and varied widths. Seed + star ID + macro index + level determines
-all geometry. Subtle alternating light/dark colour offsets inherit the original
-palette; no additive blending, grain, texture, framebuffer or new world build.
-
-Meso opacity uses smoothstep(2.4, 6, worldCamera.zoom); micro uses
-smoothstep(6, 16, worldCamera.zoom), matching the painting atlas. Both multiply
-the macro's exact hover/dwell/reveal/breath/portal alpha. They share its transform
-and drift, and widths remain in world units. The broad paint body stays intact;
-zoom reveals its smaller structure instead of imposing a screen-width cap.
-At 1x the output is unchanged. The local detailEnabled setting allows A/B testing.
-
-Geometry is generated once on first visible use of a level, never per wheel
-step. Existing view culling limits drawing; the existing one-world/two-portal-world
-cache lifetime also owns these paths. A six-target world has at most 14,400
-cached pigment paths (28,800 for two fully explored portal views), usually much
-less because hidden strokes/levels are not built. No extra GPU resources are
-allocated. Evicted worlds reproduce identical paths when revisited.
-
-Run node tests/hover_detail.browser.cjs with Playwright available, plus the
-existing hover/navigation/spatial/detail/hierarchy/portal suites. The new test
-saves ignored tests/step7b-{macro,detail}-{1,3,6,12,24}.png, moon comparisons,
-halo crops, and step7b-detail-roundtrip.webm. It measures warmed macro/detail CPU
-submission separately, cold build cost, pixel-identical reversal/regeneration,
-reveal inheritance, fade and per-world portal camera handling. Screenshots use
-frozen three-second dwell/flow for matching comparisons; the video is a controlled
-camera sweep, not a recording of wheel navigation. Existing suites exercise real
-wheel events and multiple nested/outer worlds.
-
-Limits: two finite levels of vector pigment, not physical paint simulation or
-infinite resolution. The overlay still does not receive the full GPU warp.
-The original sharp macro silhouette remains; internal variation is deliberately
-subtle. Normal navigation caps the current camera at 3x, then the parent portal
-camera grows while hover ownership fades over progress 0-.42. Diagnostic 12x/24x
-views bypass this visibility restriction solely in tests; portal mapping/fades
-are unchanged. Test timing and image equivalence do not establish subjective
-naturalness, GPU latency or absence of long-session memory leaks.
-
-## Step 8 / Step 10 - one runtime and team integration
-
-sketch.js now owns only p5 callbacks. app_controller.js preserves setup and frame
-order; input_controller.js owns the existing active keyboard/wheel routing.
-The unused NIGHT/SPACE/STAR/FADE prototype and its three supporting scripts are
-preserved in legacy/ and are no longer loaded. artwork.js remains
-active and is not part of that archive.
-
-ui_overlay.js keeps logical resolution at 800x600, scales only CSS dimensions
-at 4:3, and delegates pointer conversion to p5. The dark centred presentation
-adds a small guide outside the painting; it hides after 12 seconds, and the
-button or H toggles it. All existing active shortcuts remain available.
-No shader, painting, LOD or portal camera mapping was redesigned.
-
-Read GROUP_INTEGRATION.md before adding Audio or Time modules. group_bridge.js
-provides frozen snapshots, frame/universe/portal subscriptions with cleanup, and
-two validated Flow setters. Optional callbacks run after rendering; no optional
-module is required, and no Audio/Time behaviour has been implemented. Three
-small lifecycle notifications in nested_universe_v2.js preserve begin/end/reset
-events without giving subscribers mutable navigation references.
-
-Validation: run the seven existing browser suites and tests/app.browser.cjs.
-Use --soak with the app test for a 30-second real-animation resource sample.
-tests/refactor.browser.cjs reads the Git-visible JSON fixture at
- tests/fixtures/refactor-pixels-baseline.json. Fresh checkouts need no local log
-or manual baseline reconstruction. All three seeds and three portal depths use
-strict same-context, same-resource old/new pixel comparisons; stored image
-hashes are diagnostic across browser/GPU environments. See GROUP_INTEGRATION.md
-for dependencies and original-only fixture regeneration instructions.
-Existing browser servers changed only to serve the new stylesheet as text/css.
-
-The optional tests/presentation_performance.browser.cjs compares stylesheet
-on/off in the same page, separating CPU submission from forced GPU readback.
-On the local Edge run, later paired readback medians were about 3.5-3.6 ms;
-initial segments and standalone runs varied up to about 6.6 ms. This is not a
-claim of improved FPS. The 30-second real-loop sample had median/P95 frame
-intervals of 17.8/17.9 ms with one hover world, two textures and four canvases
-throughout. Long-session/device-specific behaviour still needs manual review.
-The existing ancestor-pinning policy is unchanged: world cache size is a soft
-limit at deep nesting, so arbitrarily deep ancestry does not have constant memory.
-
-Earlier cross-run Seed 12 snapshots occasionally differed by up to 2/255 in a
-small number of colour channels; original portal runs also had varying hashes.
-The portable fixture now records those hashes for reference while the regression
-gate remains exact live old/new pixel equality. No artwork or renderer was changed.
+## Use of AI Statement:
+ChatGPT (OpenAI) and Codex were used to improve code quality; help with difficult features;

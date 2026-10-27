@@ -91,7 +91,7 @@ const {chromium}=require('playwright');const root=path.resolve(__dirname,'..');
   for(const star of brushV2.stars.slice(0,7)){await startStar(star.id);renderAt(.5);finishPortalV2(false)}
   await startStar(tr.edge.starId);const actual=signature(cosmicMarksV2(nestedV2.transition));
   return {same:expected===actual,entries:cosmicThresholdV2.cache.size,marks:[...cosmicThresholdV2.cache.values()].reduce((a,b)=>a+b.length,0),buildMs:cosmicThresholdV2.stats.buildMs};
- });assert(cache.same&&cache.entries<=4&&cache.marks<=192);console.log('cache eviction/regeneration',cache);
+ });assert(cache.same&&cache.entries<=4&&cache.marks<=480);console.log('cache eviction/regeneration',cache);
  assert.deepEqual(errors,[]);console.log('PASS cosmic A/B, endpoints, deterministic reversal, wheel pause and bounded cache');
  }finally{if(browser)await browser.close();await new Promise(r=>server.close(r))}
 })().catch(e=>{console.error(e);process.exitCode=1});

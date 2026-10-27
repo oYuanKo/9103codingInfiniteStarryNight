@@ -389,26 +389,6 @@ void main() {
 
 `;
 
-// Separate compiled variant keeps the disabled shader source byte-for-byte intact.
-let cosmicFlowProgramV2 = null;
-let cosmicFlowWarmedV2 = false;
-const COSMIC_FLOW_FRAG_V2 = BRUSH_FLOW_FRAG
-    .replace("uniform float u_microEnabled;", "uniform float u_microEnabled;\nuniform float u_cosmicThreshold;")
-    .replace("  vec3 evolving = mix(parent.rgb,underpaint+relief,colour);", `  // Mid-depth pigment treatment only. Existing brush ownership carries the
-  // blue through paint; no full-screen dark overlay or extra noise field.
-  float threshold = u_cosmicThreshold * smoothstep(.35,.52,phase)
-                    * (1.0-smoothstep(.62,.88,phase));
-  if (threshold > 0.0) {
-    vec3 indigo = mix(vec3(13.0,35.0,75.0),vec3(40.0,78.0,137.0),
-                     clamp(.25+.55*stroke+.20*length(childFlow),0.0,1.0))/255.0;
-    underpaint = mix(underpaint,indigo,threshold*.65);
-    // Delay silhouettes locally, while retaining replay relief and child flow.
-    // The original structure ramp is recovered exactly by .88.
-    structure *= 1.0-threshold*.72;
-  }
-  vec3 evolving = mix(parent.rgb,underpaint+relief,colour);
-`);
-
 // Create an offscreen GPU renderer
 function initBrushFlowShader() {
     if (brushFlowBuffer) {
@@ -429,8 +409,6 @@ function initBrushFlowShader() {
         BRUSH_FLOW_FRAG
     );
 
-    cosmicFlowWarmedV2 = false;
-    cosmicFlowProgramV2 = brushFlowBuffer.createShader(BRUSH_FLOW_VERT, COSMIC_FLOW_FRAG_V2);
     brushFlowTime = 0;
 
     rebuildBrushFlowMap();
@@ -558,7 +536,6 @@ function drawBrushFlowShader(present = true, camera = null, portal = null) {
         u_childDetailA: childDetail.a, u_childDetailB: childDetail.b,
         u_childDetailRectA: childDetail.rectA, u_childDetailRectB: childDetail.rectB, u_childDetailWeights: childDetail.weights,
         u_progress: portal ? portal.progress : 0,
-        u_cosmicThreshold: cosmicThresholdSettingsV2.enabled ? 1 : 0,
         u_microEnabled: brushDetailSettings.microEnabled ? 1 : 0,
         u_portalAnchor: portal ? [portal.anchorX,portal.anchorY] : [width/2,height/2],
         u_cursor: [brushCursor.x, brushCursor.y],
@@ -570,21 +547,9 @@ function drawBrushFlowShader(present = true, camera = null, portal = null) {
         u_childCamera: [childCamera.x, childCamera.y, childCamera.zoom],
         u_portalActive: portal ? 1 : 0
     };
-    const experimental = cosmicThresholdSettingsV2.enabled && portal && portal.progress > .35 && portal.progress < .88;
-    // Compile/upload the variant during the first ordinary frame, never at the
-    // .35 depth boundary. Reuses this buffer and the already-needed textures.
-    // Startup pays one extra draw; no world/portal cache is involved.
-    if (!cosmicFlowWarmedV2 && cosmicThresholdSettingsV2.enabled && !portal) {
-        brushFlowBuffer.shader(cosmicFlowProgramV2);
-        for (const [name, value] of Object.entries(uniforms)) cosmicFlowProgramV2.setUniform(name, value);
-        brushFlowBuffer.plane(width, height);
-        cosmicFlowWarmedV2 = true;
-    }
-    const program = experimental ? cosmicFlowProgramV2 : brushFlowProgram;
-    brushFlowBuffer.shader(program);
+    brushFlowBuffer.shader(brushFlowProgram);
     for (const [name, value] of Object.entries(uniforms)) {
-        if (name === 'u_cosmicThreshold' && !experimental) continue;
-        program.setUniform(name, value);
+        brushFlowProgram.setUniform(name, value);
     }
     brushFlowBuffer.clear();
     brushFlowBuffer.plane(width, height);
