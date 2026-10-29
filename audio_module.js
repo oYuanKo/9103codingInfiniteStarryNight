@@ -183,15 +183,15 @@ const detachAudioModuleV1 = (() => {
         else void startAudio().then(start);
     }
 
-    const offPortal = bridge.onPortal(event => {
-        if (event.phase === 'begin') {
-            playTransitionJingle();
-            return;
-        }
-        if (event.phase !== 'end' || event.outcome !== 'completed') return;
-        if (event.direction === 'in') sceneDepth++;
-        else if (event.direction === 'out') sceneDepth = Math.max(0, sceneDepth - 1);
+    const offUniverse = bridge.onUniverseChanged(event => {
+        const depth = Number(event.current?.depth);
+        if (!Number.isFinite(depth)) return;
+        sceneDepth = Math.max(0, Math.floor(depth));
         changeSceneTrack(Math.min(sceneDepth, 2));
+    });
+
+    const offPortal = bridge.onPortal(event => {
+        if (event.phase === 'begin') playTransitionJingle();
     });
 
     const offFrame = bridge.onFrame((dt, state) => {
@@ -229,6 +229,7 @@ const detachAudioModuleV1 = (() => {
         disposed = true;
         offFrame();
         offPortal();
+        offUniverse();
         stopUnlockListeners();
         for (const timer of pauseTimers.values()) clearTimeout(timer);
         if (jingleTimer) clearTimeout(jingleTimer);

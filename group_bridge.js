@@ -40,7 +40,9 @@ const { StarryNight, publishGroupFrameV2, queueGroupPortalV2 } = (() => {
         if (node && !ids.has(node) && source && ids.has(source)) ids.set(node, ids.get(source));
         const id = identify(node || source);
         if (source && !ids.has(source)) ids.set(source, id);
-        return Object.freeze({ id, seed: node?.seed ?? universeSeed });
+        let depth = 0;
+        for (let cursor = node; cursor?.parent; cursor = cursor.parent.parent) depth++;
+        return Object.freeze({ id, seed: node?.seed ?? universeSeed, depth });
     }
     function portalCopy(tr) {
         return Object.freeze({ id: identify(tr), direction: tr.direction,

@@ -23,7 +23,7 @@ and nested_universe_v2.js without the mechanic owner's review.
 
 Use StarryNight.getState(). Before setup it returns { ready: false }.
 Otherwise it returns frozen, detached data:
-- universe: session-local ID and seed of the committed navigation world.
+- universe: session-local ID, seed, and parent-link depth of the committed navigation world. Depth is zero at the root and helps optional modules stay synchronized when the world is rebuilt or navigation is reset.
 - camera: currently rendered parent/normal camera (x, y, zoom).
 - portal: null or ID, original entry direction, parent/child seeds, star ID,
   actual/target progress and the separate child camera.
