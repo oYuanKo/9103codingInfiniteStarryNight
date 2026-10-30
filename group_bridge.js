@@ -3,6 +3,7 @@ const { StarryNight, publishGroupFrameV2, queueGroupPortalV2 } = (() => {
     const listeners = { frame: new Set(), universe: new Set(), portal: new Set() };
     const ids = new WeakMap();
     let nextId = 1, previousUniverse = null;
+    let previousPointer = null, pointerSpeed = 0;
     let portalEvents = [];
     const identify = object => {
         if (!object) return null;
@@ -10,6 +11,29 @@ const { StarryNight, publishGroupFrameV2, queueGroupPortalV2 } = (() => {
         return ids.get(object);
     };
     const cameraCopy = camera => Object.freeze({ x: camera.x, y: camera.y, zoom: camera.zoom });
+    function updatePointerSpeed(dt) {
+        const inside = !!brushCursor.inside && mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height;
+        const elapsed = Math.max(1, Math.min(Number(dt) || 16.67, 100));
+        let target = 0;
+        if (inside && previousPointer?.inside) {
+            const distance = Math.hypot(mouseX - previousPointer.x, mouseY - previousPointer.y);
+            target = Math.min(1, distance / (elapsed / 1000) / 900);
+        }
+        const smoothing = 1 - Math.exp(-elapsed / 140);
+        pointerSpeed += (target - pointerSpeed) * smoothing;
+        previousPointer = { x: mouseX, y: mouseY, inside };
+    }
+    function hoverSpread() {
+        let spread = 0;
+        for (const cached of starHoverLightV2.worlds.values()) {
+            for (const state of cached.stars) {
+                const growth = 1 - Math.exp(-state.dwell / 1.15);
+                const reach = state.star.radius * (state.star.type === 'moon' ? 3.6 : 3.25);
+                spread = Math.max(spread, state.intensity * growth * reach / 90);
+            }
+        }
+        return Math.max(0, Math.min(1, spread));
+    }
     function universeCopy() {
         const node = nestedV2.current, source = node?.world?.detailSource || brushV2.detailSource;
         // Lazy graph creation must not look like a universe change.
@@ -30,6 +54,12 @@ const { StarryNight, publishGroupFrameV2, queueGroupPortalV2 } = (() => {
         return Object.freeze({ ready: true, universe: universeCopy(),
             canvas: Object.freeze({ width, height }),
             camera: cameraCopy(portal ? getStarEntryCameraV2() : v2Camera),
+            // Detached visual controls for optional modules. Include currently drawn
+            // hover-light strokes so the count changes with the visible interaction.
+            visual: Object.freeze({ particles: (brushV2.marks?.length || 0) +
+                    (starHoverLightV2.stats?.drawn || 0),
+                cursorIntensity: Math.max(0, Math.min(1, brushCursor.active || 0)),
+                hoverSpread: hoverSpread(), pointerSpeed }),
             portal: portal ? Object.freeze({ ...portalCopy(portal), childCamera: cameraCopy(render.childCamera) }) : null,
             loading: !!nestedV2.pending,
             flow: Object.freeze({ speed: brushFlowSettings.speed, strength: brushFlowSettings.strength,
@@ -70,6 +100,7 @@ const { StarryNight, publishGroupFrameV2, queueGroupPortalV2 } = (() => {
             previousUniverse = null;
             return;
         }
+        updatePointerSpeed(dt);
         const state = getState();
         if (!state.ready) return;
         // Publish only after rendering: a subscriber's approved settings apply next frame.

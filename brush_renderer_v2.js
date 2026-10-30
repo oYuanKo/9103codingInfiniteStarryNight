@@ -210,7 +210,13 @@ function brushV2Color(x, y) {
 
 function paintV2Stroke(g, x, y, angle, len, weight, colour, alpha = 255) {
     if (g === brushV2.base && brushV2.detailSource) {
-        recordBrushStrokeV2(brushV2.detailSource, x, y, angle, len, weight, colour, alpha);
+        // Keep record IDs stable, but omit deferred small stars from zoom atlases.
+        recordBrushStrokeV2(brushV2.detailSource, x, y, angle, len, weight, colour,
+            g.timeStarStrokes ? 0 : alpha);
+    }
+    if (g.timeStarStrokes) {
+        g.timeStarStrokes.push({x, y, angle, len, weight, colour, alpha});
+        return;
     }
     const ux = cos(angle);
     const uy = sin(angle);
@@ -308,13 +314,22 @@ function* buildBrushV2Steps(seed, preservePrevious = false) {
 
             const angle = brushV2Angle(px, py);
             const colour = brushV2Color(px, py);
+            const length = random(15, 25);
+            let weight = random(8, 12);
+
+            // Widen the existing centre stroke to cover the gap.
+            // Keeping the same strokes and random calls also preserves zoomed details.
+            if (abs(x - width * 0.48) < step / 2 &&
+                abs(y - height * 0.32) < step / 2) {
+                weight = 32;
+            }
 
             paintV2Stroke(
                 brushV2.base,
                 px, py,
                 angle,
-                random(15, 25),
-                random(8, 12),
+                length,
+                weight,
                 colour
             );
         }
@@ -374,8 +389,33 @@ function* buildBrushV2Steps(seed, preservePrevious = false) {
         yield;
     }
 
+    for (let y = 4; y < height * 0.6; y++) {
+        fillBrushSkyGapRow(brushV2.base, y);
+        yield;
+    }
     brushV2.detailSource.records = Float64Array.from(brushV2.detailSource.records);
     console.log("Brush V2 generated:", seed);
+}
+
+function fillBrushSkyGapRow(g, y) {
+    // get() 取邻近颜料色，再沿流向补一小笔；放大时也会重画同一笔。
+    for (let x = 4; x < width - 4; x++) {
+        const pixel = g.get(x, y);
+        if (pixel[0] > 16 || pixel[1] > 32 || pixel[2] > 64) continue;
+        if (brushV2.cypress && pointInCypress(x, y, brushV2.cypress)) continue;
+        const neighbours = [g.get(x - 4, y), g.get(x + 4, y),
+            g.get(x, y - 4), g.get(x, y + 4)];
+        const colour = [0, 0, 0];
+        let count = 0;
+        for (const sample of neighbours) {
+            if (sample[0] <= 16 && sample[1] <= 32 && sample[2] <= 64) continue;
+            for (let channel = 0; channel < 3; channel++) colour[channel] += sample[channel];
+            count++;
+        }
+        if (count === 0) continue;
+        for (let channel = 0; channel < 3; channel++) colour[channel] /= count;
+        paintV2Stroke(g, x, y, brushV2Angle(x, y), 4, 3, colour);
+    }
 }
 
 function initBrushV2(seed, preservePrevious = false) {
@@ -598,9 +638,11 @@ function paintStarCore(g, star) {
 
         const alpha = map(ratio, 0, 1, 240, 145);
 
+        // 第一笔盖住中心，避免随机分布留下蓝色缺口；随机数调用顺序不变。
         paintV2Stroke(
-            g, px, py, angle,
-            len, weight, colour, alpha
+            g, i === 0 ? star.x : px, i === 0 ? star.y : py, angle,
+            len, i === 0 ? max(weight, star.radius * 0.55) : weight,
+            i === 0 ? STAR_BRUSH_COLORS.core : colour, i === 0 ? 255 : alpha
         );
     }
 }
@@ -608,14 +650,30 @@ function paintStarCore(g, star) {
 
 function paintAllBrushV2Stars(g) {
     for (const star of brushV2.stars) {
-        paintStarGlowField(g, star);
+        paintBrushV2StarPart(g, star, paintStarGlowField);
     }
 
     for (const star of brushV2.stars) {
-        paintStarHaloRings(g, star);
+        paintBrushV2StarPart(g, star, paintStarHaloRings);
     }
 
     for (const star of brushV2.stars) {
-        paintStarCore(g, star);
+        paintBrushV2StarPart(g, star, paintStarCore);
+    }
+}
+
+function paintBrushV2StarPart(g, star, paintPart) {
+    // Defer original small-star paint to the Time layer.
+    // The same painters still consume the same seeded random values.
+    if (star.type !== 'small' || typeof drawTimeOriginalStars !== 'function') {
+        paintPart(g, star);
+        return;
+    }
+    if (!star.timeStrokes) star.timeStrokes = [];
+    g.timeStarStrokes = star.timeStrokes;
+    try {
+        paintPart(g, star);
+    } finally {
+        g.timeStarStrokes = null;
     }
 }
