@@ -25,35 +25,34 @@ Users can explore different layers of the artwork by zooming in, moving from the
 
 ## Time-based mechanic — Yang Wu
 
-My part is to make the night sky change over time. I wanted it to start calmly,
-become more active, and then slowly return to calm.
+My part changes the rhythm of the painting over time. I wanted the brushstrokes
+to speed up until the sky looks still, then gradually start moving again.
 
-The whole cycle lasts 60 seconds and repeats:
+The cycle lasts 60 seconds:
 
-| Stage | Duration |
+| Time | What happens |
 |---|---|
-| Calm | 10 seconds |
-| Active | 10 seconds |
-| Peak | 10 seconds |
-| Recovery | 30 seconds |
+| 0–30 seconds | The flow accelerates. Short paint trails begin blending in near the peak. |
+| 30–40 seconds | The blended painting stays visually still. |
+| 40–60 seconds | The trails fade and clear movement gradually returns. |
 
-As the cycle builds up, the flow gets faster, the added star highlights get
-brighter, more small stars appear, and the extra sky strokes get closer together.
-The changes reach their strongest point at around 30 seconds. During Recovery,
-they gradually go back to the starting values.
+The effect follows the painting's existing flow directions and colours. It uses
+a small blend of nearby paint samples, so the stars do not turn into rotating rings.
+This is a visual effect created by blending the painting, rather than a physical
+simulation of motion becoming invisible.
 
-The original painting and its main stars stay in place. My changes add extra
-details to the sky, and viewers can still enter the original stars and moon.
+The earlier extra-star and sky-stroke layer is kept in the code but switched off
+in this version. The original stars and moon remain available for navigation.
 
 ### Code structure
 
-- `time-mechanic.js` keeps track of time and calculates the changing values.
-- `time-atmosphere.js` draws the extra stars, highlights and sky strokes.
-- `time-integration.js` connects Time to the group's world, camera and pause controls.
+- `time-mechanic.js` calculates the cycle, flow speed and paint blending.
+- `time-integration.js` connects these values to the shared renderer and handles pause and reset.
+- `brush_flow_shader.js` blends the existing paint samples along their flow direction.
+- `time-atmosphere.js` retains the earlier optional star and stroke drawings.
 
-The `TimeMechanic` class keeps the values together. Its `update()` function uses
-elapsed time from the existing draw loop and `lerp()` to move between the starting
-and target values. The drawings use loops, lines, ellipses and transformations.
+Time uses elapsed time from the existing draw loop. The values change through
+simple arithmetic and `lerp()`.
 
 ### How to try it
 
@@ -76,7 +75,7 @@ I also noticed a small dark gap in the centre of the sky vortex. I widened the
 existing centre brushstroke to fill it, and checked that the flow animation,
 zoom and star navigation still worked correctly.
 
-**AI acknowledgement:** ChatGPT/Codex helped with the Time mechanic, shared pause and vortex fix. The code uses elapsed time and `lerp()` for Time changes, and widens one brushstroke to fill the gap.
+**AI acknowledgement:** ChatGPT/Codex assisted with my Time implementation, shared pause and vortex fix.
 
 ## GitHub 使用指南
 

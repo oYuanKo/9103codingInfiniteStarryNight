@@ -1,6 +1,4 @@
 // ChatGPT/Codex-assisted: Time integration and pause/reset handling.
-// 阅读顺序：先看 time-mechanic.js，再看 time-atmosphere.js，最后看本文件。
-// StarryNight.getState() 和 deltaTime 沿用组员的程序，不是新增课堂示例。
 // deltaTime 的单位是毫秒：由已有 draw() 每帧提供，不再另开一个计时器。
 let timeWorldId = null;
 let timePreviousFlow = null;
@@ -17,6 +15,7 @@ function updateTimeMechanic(elapsedMilliseconds, state) {
     if (!timeMechanic.enabled) {
         if (timePreviousFlow !== null) {
             brushFlowSettings.speed = timePreviousFlow.speed;
+            brushFlowSettings.timeBlend = timePreviousFlow.timeBlend;
             timePreviousFlow = null;
         }
         timeWorldId = null;
@@ -25,7 +24,8 @@ function updateTimeMechanic(elapsedMilliseconds, state) {
 
     if (timePreviousFlow === null) {
         timePreviousFlow = {
-            speed: brushFlowSettings.speed
+            speed: brushFlowSettings.speed,
+            timeBlend: brushFlowSettings.timeBlend || 0
         };
     }
 
@@ -38,12 +38,10 @@ function updateTimeMechanic(elapsedMilliseconds, state) {
     }
     timeSkipNextFrame = false;
 
-    // 将原型的 0–1.4 换算为 1.8–9：整体稍放慢，保留起步与峰值的差别。
-    // strength 是摆动幅度，留给原来的 [ / ] 按键，不与速度混用。
-    let speedProgress = timeMechanic.flowSpeed / 1.4;
-    let calmSpeed = 1.8;
-    let peakSpeed = 9;
-    brushFlowSettings.speed = lerp(calmSpeed, peakSpeed, speedProgress);
+    // Time 只传入速度和残影混合量；方向、颜色和笔触仍来自原画。
+    // strength 仍由原来的 [ / ] 按键控制。
+    brushFlowSettings.speed = timeMechanic.paintSpeed;
+    brushFlowSettings.timeBlend = timeMechanic.paintBlend;
 }
 
 function advanceTimeIfPlaying(elapsedMilliseconds, state) {
@@ -59,6 +57,7 @@ function advanceTimeIfPlaying(elapsedMilliseconds, state) {
 
 function drawTimeAtmosphere() {
     if (!timeMechanic.enabled) return;
+    if (!timeMechanic.showExtraMarks) return;
     if (nestedV2.transition) {
         // 下面的坐标和世界引用均沿用组员已经实现的穿梭画面。
         let portal = getPortalRenderV2();

@@ -1,11 +1,11 @@
 // Time-based mechanic — Yang Wu.
 // ChatGPT/Codex-assisted: Time cycle and interpolation.
-// 课堂依据：Week 8 的 class；Week 10 第 8–19 页的 lerp()。
 // 这个文件只算时间和数值，不生成世界，也不控制滚轮。
 
 class TimeMechanic {
     constructor() {
         this.enabled = true;
+        this.showExtraMarks = false; // 整幅画版本只使用原画笔触；保留旧叠加层供比较。
         this.phaseDuration = 10000; // 毫秒：10000 毫秒 = 10 秒。
         this.reset();
     }
@@ -21,6 +21,8 @@ class TimeMechanic {
         this.starBrightness = 0.2;
         this.visibleStars = 2; // 补充小星星的数量；原画的星星一直保留。
         this.strokeGap = 36;  // 补充天空笔触的间距；越小，笔触越密。
+        this.paintSpeed = 1.8;
+        this.paintBlend = 0; // 0：清晰流动；1：原笔触残影混合后的稳定画面。
 
         this.rememberStartValues();
         this.setTargets();
@@ -77,8 +79,7 @@ class TimeMechanic {
 
     update(elapsedMilliseconds) {
         // elapsedMilliseconds 是这次经过的时间，由小组现有画面提供。
-        // 辅助检查：Number.isFinite() 判断传入的时间是不是正常的有限数值。
-        // 它不是已找到的课堂例子；保留它是为了防止异常时间破坏循环。
+        // 忽略无效时间，避免破坏循环。
         if (!Number.isFinite(elapsedMilliseconds)) return;
         if (elapsedMilliseconds <= 0) return;
         this.phaseTime = this.phaseTime + elapsedMilliseconds;
@@ -100,6 +101,29 @@ class TimeMechanic {
         this.starBrightness = lerp(this.startStarBrightness, this.targetStarBrightness, progress);
         this.visibleStars = lerp(this.startVisibleStars, this.targetVisibleStars, progress);
         this.strokeGap = lerp(this.startStrokeGap, this.targetStrokeGap, progress);
+        this.updatePaintingLoop();
+    }
+
+    updatePaintingLoop() {
+        // 沿用原来的 60 秒时钟：暂停、后台和换世界仍统一处理。
+        let step = this.phase + this.recoveryStep;
+        let seconds = (step + this.phaseTime / this.phaseDuration) * 10;
+        if (seconds < 30) {
+            let progress = seconds / 30;
+            this.paintSpeed = lerp(1.8, 28, progress * progress);
+            // 先看清加速，再让原笔触的短残影逐渐混合。
+            this.paintBlend = Math.max(0, (seconds - 22) / 8);
+        } else if (seconds < 40) {
+            this.paintSpeed = 28;
+            this.paintBlend = 1;
+        } else {
+            let progress = (seconds - 40) / 20;
+            // 速度重置藏在稳定画面里，再慢慢恢复清晰运动。
+            this.paintSpeed = lerp(0.6, 1.8, progress);
+            this.paintBlend = 1 - progress;
+        }
+        let blend = this.paintBlend;
+        this.paintBlend = blend * blend * (3 - 2 * blend);
     }
 
     changePhase() {
