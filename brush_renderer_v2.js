@@ -210,7 +210,13 @@ function brushV2Color(x, y) {
 
 function paintV2Stroke(g, x, y, angle, len, weight, colour, alpha = 255) {
     if (g === brushV2.base && brushV2.detailSource) {
-        recordBrushStrokeV2(brushV2.detailSource, x, y, angle, len, weight, colour, alpha);
+        // Keep record IDs stable, but omit deferred small stars from zoom atlases.
+        recordBrushStrokeV2(brushV2.detailSource, x, y, angle, len, weight, colour,
+            g.timeStarStrokes ? 0 : alpha);
+    }
+    if (g.timeStarStrokes) {
+        g.timeStarStrokes.push({x, y, angle, len, weight, colour, alpha});
+        return;
     }
     const ux = cos(angle);
     const uy = sin(angle);
@@ -311,7 +317,7 @@ function* buildBrushV2Steps(seed, preservePrevious = false) {
             const length = random(15, 25);
             let weight = random(8, 12);
 
-            // Yang Wu, Codex-assisted: widen the existing centre stroke to cover the gap.
+            // Widen the existing centre stroke to cover the gap.
             // Keeping the same strokes and random calls also preserves zoomed details.
             if (abs(x - width * 0.48) < step / 2 &&
                 abs(y - height * 0.32) < step / 2) {
@@ -617,14 +623,30 @@ function paintStarCore(g, star) {
 
 function paintAllBrushV2Stars(g) {
     for (const star of brushV2.stars) {
-        paintStarGlowField(g, star);
+        paintBrushV2StarPart(g, star, paintStarGlowField);
     }
 
     for (const star of brushV2.stars) {
-        paintStarHaloRings(g, star);
+        paintBrushV2StarPart(g, star, paintStarHaloRings);
     }
 
     for (const star of brushV2.stars) {
-        paintStarCore(g, star);
+        paintBrushV2StarPart(g, star, paintStarCore);
+    }
+}
+
+function paintBrushV2StarPart(g, star, paintPart) {
+    // Defer original small-star paint to the Time layer.
+    // The same painters still consume the same seeded random values.
+    if (star.type !== 'small' || typeof drawTimeOriginalStars !== 'function') {
+        paintPart(g, star);
+        return;
+    }
+    if (!star.timeStrokes) star.timeStrokes = [];
+    g.timeStarStrokes = star.timeStrokes;
+    try {
+        paintPart(g, star);
+    } finally {
+        g.timeStarStrokes = null;
     }
 }

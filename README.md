@@ -25,38 +25,37 @@ Users can explore different layers of the artwork by zooming in, moving from the
 
 ## Time-based mechanic — Yang Wu
 
-My part changes the rhythm of the painting over time. I wanted the brushstrokes
-to speed up until the sky looks still, then gradually start moving again.
+My part changes the rhythm of the painting over time. The sky starts slowly,
+then builds up to faster movement before the brushstrokes blend together and
+clear movement returns.
 
-The cycle lasts 60 seconds:
+The Time cycle lasts 34 seconds. One smooth curve controls the
+whole speed cycle: a long gentle opening, a gradual build-up, a brief rounded
+peak near 30 seconds lasting about 2.6 seconds near its highest speed, then
+movement settles to rest before gently starting again.
 
-| Time | What happens |
-|---|---|
-| 0–30 seconds | The flow accelerates. Short paint trails begin blending in near the peak. |
-| 30–40 seconds | The blended painting stays visually still. |
-| 40–60 seconds | The trails fade and clear movement gradually returns. |
+The movement reaches zero when blending is strongest. The same picture then
+starts moving slowly; clarity, stars and sky strokes return towards their
+initial state as that movement builds, rather than on a separate fade timer.
 
-The effect follows the painting's existing flow directions and colours. It uses
-a small blend of nearby paint samples, so the stars do not turn into rotating rings.
-This is a visual effect created by blending the painting, rather than a physical
-simulation of motion becoming invisible.
-
-The earlier extra-star and sky-stroke layer is kept in the code but switched off
-in this version. The original stars and moon remain available for navigation.
+The moon and main stars remain in place. The original small stars gradually
+appear in their original positions, using their original brushstrokes. Their
+positions and the seeded world layout stay unchanged.
 
 ### Code structure
 
-- `time-mechanic.js` calculates the cycle, flow speed and paint blending.
-- `time-integration.js` connects these values to the shared renderer and handles pause and reset.
-- `brush_flow_shader.js` blends the existing paint samples along their flow direction.
-- `time-atmosphere.js` retains the earlier optional star and stroke drawings.
+- `time-mechanic.js` uses one clock to calculate speed, exposure, star visibility and stroke density.
+- `time-atmosphere.js` draws the saved small-star strokes and the changing sky highlights.
+- `time-integration.js` connects Time to the group's renderer, camera and pause controls.
+- `brush_renderer_v2.js` saves the small-star strokes separately so Time can reveal them.
+- `brush_flow_shader.js` averages moving paint samples to create the exposure effect.
 
 Time uses elapsed time from the existing draw loop. The values change through
-simple arithmetic and `lerp()`.
+simple arithmetic, smooth progress curves and `lerp()`.
 
 ### How to try it
 
-Watch the painting for one minute to see the full cycle. Click the painting once to start music.
+Watch the painting for about 35 seconds to see the full cycle. Click the painting once to start music.
 
 - **Space:** pause or continue the Time cycle, flow and music.
 - **F:** turn flow off or on. Time also pauses while flow is off.

@@ -1,11 +1,10 @@
-// ChatGPT/Codex-assisted: Time integration and pause/reset handling.
 // deltaTime 的单位是毫秒：由已有 draw() 每帧提供，不再另开一个计时器。
 let timeWorldId = null;
 let timePreviousFlow = null;
 let timeSkipNextFrame = false;
 let timeCalmPreview = new TimeMechanic();
 
-// Week 5 的 addEventListener：回到页面时不把后台停留的时间一次算进去。
+// 回到页面时，不把后台停留的时间一次算进去。
 document.addEventListener('visibilitychange', function () {
     timeSkipNextFrame = true;
 });
@@ -16,6 +15,7 @@ function updateTimeMechanic(elapsedMilliseconds, state) {
         if (timePreviousFlow !== null) {
             brushFlowSettings.speed = timePreviousFlow.speed;
             brushFlowSettings.timeBlend = timePreviousFlow.timeBlend;
+            brushFlowSettings.restartOffset = timePreviousFlow.restartOffset;
             timePreviousFlow = null;
         }
         timeWorldId = null;
@@ -25,7 +25,8 @@ function updateTimeMechanic(elapsedMilliseconds, state) {
     if (timePreviousFlow === null) {
         timePreviousFlow = {
             speed: brushFlowSettings.speed,
-            timeBlend: brushFlowSettings.timeBlend || 0
+            timeBlend: brushFlowSettings.timeBlend || 0,
+            restartOffset: brushFlowSettings.restartOffset || 0
         };
     }
 
@@ -38,10 +39,11 @@ function updateTimeMechanic(elapsedMilliseconds, state) {
     }
     timeSkipNextFrame = false;
 
-    // Time 只传入速度和残影混合量；方向、颜色和笔触仍来自原画。
+    // Time 传入速度、融合量和起步位移；方向、颜色和笔触仍来自原画。
     // strength 仍由原来的 [ / ] 按键控制。
     brushFlowSettings.speed = timeMechanic.paintSpeed;
     brushFlowSettings.timeBlend = timeMechanic.paintBlend;
+    brushFlowSettings.restartOffset = timeMechanic.paintRestartOffset;
 }
 
 function advanceTimeIfPlaying(elapsedMilliseconds, state) {
@@ -56,8 +58,7 @@ function advanceTimeIfPlaying(elapsedMilliseconds, state) {
 }
 
 function drawTimeAtmosphere() {
-    if (!timeMechanic.enabled) return;
-    if (!timeMechanic.showExtraMarks) return;
+    // 原有小星独立绘制；关闭 Time 时也需要完整显示它们。
     if (nestedV2.transition) {
         // 下面的坐标和世界引用均沿用组员已经实现的穿梭画面。
         let portal = getPortalRenderV2();
@@ -77,8 +78,9 @@ function drawTimeAtmosphere() {
         let childOpacity = (portal.progress - childFadeStart) / 0.28;
         if (parentOpacity < 0) parentOpacity = 0;
         if (childOpacity < 0) childOpacity = 0;
-        drawTimeWorld(transition.parent, getStarEntryCameraV2(), parentTime, parentOpacity);
-        drawTimeWorld(transition.child, portal.childCamera, childTime, childOpacity);
+        // 原有小星连续交接；只有补充高亮和天空笔触在穿梭中段退场。
+        drawTimeWorld(transition.parent, getStarEntryCameraV2(), parentTime, parentOpacity, 1 - portal.progress);
+        drawTimeWorld(transition.child, portal.childCamera, childTime, childOpacity, portal.progress);
     } else {
         drawTimeWorld(captureWorldV2(), v2Camera, timeMechanic, 1);
     }
@@ -101,6 +103,6 @@ function getTimeStrokeAngle(world, x, y) {
     let firstChannel = pixelNumber * 4;
     let directionX = map.pixels[firstChannel] / 127.5 - 1;
     let directionY = map.pixels[firstChannel + 1] / 127.5 - 1;
-    // atan2() 是连接现有流向图所需的辅助数学函数，不是课堂核心逻辑。
+    // atan2() 将流向图的横、纵方向转换成角度。
     return Math.atan2(directionY, directionX);
 }

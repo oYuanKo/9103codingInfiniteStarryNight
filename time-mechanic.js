@@ -1,80 +1,36 @@
 // Time-based mechanic — Yang Wu.
-// ChatGPT/Codex-assisted: Time cycle and interpolation.
 // 这个文件只算时间和数值，不生成世界，也不控制滚轮。
+
+// 整幅画的速度曲线。时间单位为秒，速度沿用现有画面的参数。
+const paintingTimeSettings = {
+    cycleSeconds: 34,
+    startSpeed: 1.8,
+    peakSpeed: 108,
+    risePower: 36, // 较大的上升指数让低速铺垫更长。
+    fallPower: 5,  // 较小的回落指数让峰值靠后、高速更短。
+    exposureRisePower: 52,
+    exposureFallPower: 4, // 融合最强处作为静止后的起步点。
+    settleSeconds: 0.5, // 在融合末尾收住运动。
+    maxBlend: 0.98
+};
 
 class TimeMechanic {
     constructor() {
         this.enabled = true;
-        this.showExtraMarks = false; // 整幅画版本只使用原画笔触；保留旧叠加层供比较。
-        this.phaseDuration = 10000; // 毫秒：10000 毫秒 = 10 秒。
+        this.showExtraMarks = true;
         this.reset();
     }
 
     reset() {
-        this.phase = 0;
-        this.recoveryStep = 0;
-        this.phaseTime = 0;
-        this.phaseName = 'Calm';
-
-        // 四项输出。flowSpeed 是速度，不是组员代码里的摆动幅度 strength。
-        this.flowSpeed = 0;
+        // 所有效果共用 paintingTime，暂停和换世界时一起处理。
         this.starBrightness = 0.2;
-        this.visibleStars = 2; // 补充小星星的数量；原画的星星一直保留。
+        this.visibleStars = 2; // 原有小星的显现数量；主星和月亮始终保留。
         this.strokeGap = 36;  // 补充天空笔触的间距；越小，笔触越密。
-        this.paintSpeed = 1.8;
-        this.paintBlend = 0; // 0：清晰流动；1：原笔触残影混合后的稳定画面。
-
-        this.rememberStartValues();
-        this.setTargets();
-    }
-
-    rememberStartValues() {
-        // 下一步从当前值开始，避免在两个阶段之间突然跳变。
-        this.startFlowSpeed = this.flowSpeed;
-        this.startStarBrightness = this.starBrightness;
-        this.startVisibleStars = this.visibleStars;
-        this.startStrokeGap = this.strokeGap;
-    }
-
-    setTargets() {
-        if (this.phase === 0) {
-            this.phaseName = 'Calm';
-            this.targetFlowSpeed = 0.2;
-            this.targetStarBrightness = 0.4;
-            this.targetVisibleStars = 3;
-            this.targetStrokeGap = 30;
-        } else if (this.phase === 1) {
-            this.phaseName = 'Active';
-            this.targetFlowSpeed = 0.7;
-            this.targetStarBrightness = 0.7;
-            this.targetVisibleStars = 4;
-            this.targetStrokeGap = 24;
-        } else if (this.phase === 2) {
-            this.phaseName = 'Peak';
-            this.targetFlowSpeed = 1.4;
-            this.targetStarBrightness = 1;
-            this.targetVisibleStars = 6;
-            this.targetStrokeGap = 18;
-        } else {
-            this.phaseName = 'Recovery';
-            // Recovery 一共有三个十秒步骤，沿原来的数值逐步退回。
-            if (this.recoveryStep === 0) {
-                this.targetFlowSpeed = 0.7;
-                this.targetStarBrightness = 0.7;
-                this.targetVisibleStars = 4;
-                this.targetStrokeGap = 24;
-            } else if (this.recoveryStep === 1) {
-                this.targetFlowSpeed = 0.2;
-                this.targetStarBrightness = 0.4;
-                this.targetVisibleStars = 3;
-                this.targetStrokeGap = 30;
-            } else {
-                this.targetFlowSpeed = 0;
-                this.targetStarBrightness = 0.2;
-                this.targetVisibleStars = 2;
-                this.targetStrokeGap = 36;
-            }
-        }
+        this.paintingTime = 0;
+        this.paintSpeed = paintingTimeSettings.startSpeed;
+        this.paintBlend = 0; // 0：单个运动位置；1：混合一个周期内的运动位置。
+        this.restartTravel = 0;
+        this.paintRestartOffset = 0;
     }
 
     update(elapsedMilliseconds) {
@@ -82,64 +38,93 @@ class TimeMechanic {
         // 忽略无效时间，避免破坏循环。
         if (!Number.isFinite(elapsedMilliseconds)) return;
         if (elapsedMilliseconds <= 0) return;
-        this.phaseTime = this.phaseTime + elapsedMilliseconds;
-
-        // 如果这一帧跨过了阶段边界，保留多出来的时间。
-        while (this.phaseTime >= this.phaseDuration) {
-            this.flowSpeed = this.targetFlowSpeed;
-            this.starBrightness = this.targetStarBrightness;
-            this.visibleStars = this.targetVisibleStars;
-            this.strokeGap = this.targetStrokeGap;
-            this.phaseTime = this.phaseTime - this.phaseDuration;
-            this.changePhase();
-        }
-
-        // 例如：经过 5 秒 / 总共 10 秒 = 0.5，表示走到一半。
-        let progress = this.phaseTime / this.phaseDuration;
-        // lerp(起始值, 目标值, 进度)，与原型的“起始值 + 差值 × 进度”等价。
-        this.flowSpeed = lerp(this.startFlowSpeed, this.targetFlowSpeed, progress);
-        this.starBrightness = lerp(this.startStarBrightness, this.targetStarBrightness, progress);
-        this.visibleStars = lerp(this.startVisibleStars, this.targetVisibleStars, progress);
-        this.strokeGap = lerp(this.startStrokeGap, this.targetStrokeGap, progress);
+        const settings = paintingTimeSettings;
+        const cycleSeconds = settings.cycleSeconds;
+        // 余数让循环重新开始，同时保留这一帧多出来的时间。
+        this.paintingTime = (this.paintingTime + elapsedMilliseconds / 1000) % cycleSeconds;
         this.updatePaintingLoop();
+        this.updateAtmosphere();
     }
 
     updatePaintingLoop() {
-        // 沿用原来的 60 秒时钟：暂停、后台和换世界仍统一处理。
-        let step = this.phase + this.recoveryStep;
-        let seconds = (step + this.phaseTime / this.phaseDuration) * 10;
-        if (seconds < 30) {
-            let progress = seconds / 30;
-            this.paintSpeed = lerp(1.8, 28, progress * progress);
-            // 先看清加速，再让原笔触的短残影逐渐混合。
-            this.paintBlend = Math.max(0, (seconds - 22) / 8);
-        } else if (seconds < 40) {
-            this.paintSpeed = 28;
-            this.paintBlend = 1;
-        } else {
-            let progress = (seconds - 40) / 20;
-            // 速度重置藏在稳定画面里，再慢慢恢复清晰运动。
-            this.paintSpeed = lerp(0.6, 1.8, progress);
-            this.paintBlend = 1 - progress;
+        const settings = paintingTimeSettings;
+        const progress = this.paintingTime / settings.cycleSeconds;
+        const restart = settings.exposureRisePower /
+            (settings.exposureRisePower + settings.exposureFallPower);
+
+        // 一条完整圆峰曲线决定整轮速度，不在某一秒额外叠加强加速。
+        const speedCurve = this.roundedPeak(progress, settings.risePower, settings.fallPower);
+        this.paintSpeed = lerp(settings.startSpeed, settings.peakSpeed, speedCurve);
+
+        // 同一个循环进度，融合的圆峰稍晚，让恢复过程保持连贯。
+        const exposureCurve = this.roundedPeak(progress,
+            settings.exposureRisePower, settings.exposureFallPower);
+        this.paintBlend = settings.maxBlend * exposureCurve;
+
+        // 融合末尾平滑收住运动。
+        const settle = restart - settings.settleSeconds / settings.cycleSeconds;
+        if (progress > settle && progress < restart) {
+            const settling = (progress - settle) / (restart - settle);
+            this.paintSpeed *= 1 - this.easeAcceleration(settling);
         }
-        let blend = this.paintBlend;
-        this.paintBlend = blend * blend * (3 - 2 * blend);
+
+        this.restartTravel = 0;
+        this.paintRestartOffset = 0;
+        if (progress >= restart) {
+            const starting = (progress - restart) / (1 - restart);
+            // 从同一帧的 0 速度起步，不重置渲染器累积的运动位置。
+            this.paintSpeed = settings.startSpeed * this.easeAcceleration(starting);
+            // 对上面的起步速度求累计距离，再归一到 0–1。
+            // 刚起步几乎没有位移，因此画面也不会先发生淡出变化。
+            this.restartTravel = Math.pow(starting, 4) * (5 - 6 * starting + 2 * starting * starting);
+            this.paintBlend = settings.maxBlend * (1 - this.easeAcceleration(this.restartTravel));
+            // 让融合后的画面本身先动起来，而不是只由模糊变清楚。
+            const startingSeconds = settings.cycleSeconds * (1 - restart);
+            const distance = this.restartTravel * settings.startSpeed * startingSeconds / 2;
+            this.paintRestartOffset = Math.sin(distance) * this.paintBlend;
+        }
     }
 
-    changePhase() {
-        if (this.phase === 3) {
-            if (this.recoveryStep < 2) {
-                this.recoveryStep = this.recoveryStep + 1;
-            } else {
-                this.phase = 0;
-                this.recoveryStep = 0;
-            }
-        } else {
-            this.phase = this.phase + 1;
-        }
-        this.rememberStartValues();
-        this.setTargets();
+    roundedPeak(progress, risePower, fallPower) {
+        // 上升量与回落量相乘，形成两端为 0、中间为 1 的平滑圆峰。
+        // 除以峰值位置，把最高点归一到 1，方便交给 lerp()。
+        if (progress <= 0 || progress >= 1) return 0;
+        const peak = risePower / (risePower + fallPower);
+        const rising = Math.pow(progress / peak, risePower);
+        const falling = Math.pow((1 - progress) / (1 - peak), fallPower);
+        return Math.min(1, rising * falling);
     }
+
+    updateAtmosphere() {
+        const settings = paintingTimeSettings;
+        const progress = this.paintingTime / settings.cycleSeconds;
+        const peak = settings.risePower / (settings.risePower + settings.fallPower);
+        const restart = settings.exposureRisePower /
+            (settings.exposureRisePower + settings.exposureFallPower);
+        // 星星和笔触仍在整段上升过程中渐增，不集中到高速时才出现。
+        let intensity;
+        if (progress < peak) {
+            intensity = this.easeAcceleration(progress / peak);
+        } else if (progress < restart) {
+            // 星光和密度随曲线回落，直到静止后的起步点。
+            intensity = this.easeAcceleration((1 - progress) / (1 - peak));
+        } else {
+            const startingIntensity = this.easeAcceleration((1 - restart) / (1 - peak));
+            intensity = startingIntensity * (1 - this.easeAcceleration(this.restartTravel));
+        }
+        this.starBrightness = lerp(0.2, 1, intensity);
+        this.visibleStars = lerp(2, 12, intensity);
+        this.strokeGap = lerp(36, 18, intensity);
+    }
+
+    easeAcceleration(progress) {
+        // S 形进度：从 0 到 1，两端的变化率都回到 0。
+        // 10p³ - 15p⁴ + 6p⁵，用基本乘法算出，再交给 lerp()。
+        const squared = progress * progress;
+        const cubed = squared * progress;
+        return cubed * (10 - 15 * progress + 6 * squared);
+    }
+
 }
 
 let timeMechanic = new TimeMechanic();
