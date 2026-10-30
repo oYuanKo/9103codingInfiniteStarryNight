@@ -5,14 +5,46 @@
 const paintingTimeSettings = {
     cycleSeconds: 34,
     startSpeed: 1.8,
-    peakSpeed: 108,
-    risePower: 36, // 较大的上升指数让低速铺垫更长。
-    fallPower: 5,  // 较小的回落指数让峰值靠后、高速更短。
-    exposureRisePower: 52,
-    exposureFallPower: 4, // 融合最强处作为静止后的起步点。
-    settleSeconds: 0.5, // 在融合末尾收住运动。
-    maxBlend: 0.98
+    peakTime: 29.85,
+    restartTime: 31.57,
+    starAppearStart: 8,
+    starAppearInterval: 2.4,
+    starAppearFade: 1.2,
+    starLeaveDelay: 1.5,
+    starLeaveInterval: 0.8,
+    starLeaveFade: 0.6
 };
+
+// 每行：[秒数，流速，融合量，起步位移]。
+const timeKeyframes = [
+    [0, 1.8, 0, 0],
+    [8, 1.8, 0, 0],
+    [16, 1.8, 0, 0],
+    [20, 1.83, 0, 0],
+    [22, 2.16, 0, 0],
+    [24, 5.15, 0.0002, 0],
+    [25, 10.41, 0.001, 0],
+    [26, 21.41, 0.0048, 0],
+    [27, 40.93, 0.0199, 0],
+    [28, 68.84, 0.071, 0],
+    [29, 97.09, 0.2124, 0],
+    [29.85, 108, 0.4527, 0],
+    [30.5, 100.21, 0.7021, 0],
+    [31, 83.55, 0.8827, 0],
+    [31.07, 80.6, 0.9031, 0],
+    [31.2, 66.47, 0.9358, 0],
+    [31.35, 26.65, 0.9635, 0],
+    [31.45, 6.03, 0.9749, 0],
+    [31.57, 0, 0.98, 0],
+    [31.67, 0.0012, 0.9794, 0.00003],
+    [31.8, 0.01, 0.9729, 0.0007],
+    [32, 0.07, 0.9394, 0.008],
+    [32.4, 0.4, 0.7628, 0.0719],
+    [32.8, 0.92, 0.4792, 0.1663],
+    [33.2, 1.43, 0.2, 0.1475],
+    [33.6, 1.74, 0.0337, 0.0335],
+    [34, 1.8, 0, 0],
+];
 
 class TimeMechanic {
     constructor() {
@@ -27,10 +59,13 @@ class TimeMechanic {
         this.visibleStars = 2; // 原有小星的显现数量；主星和月亮始终保留。
         this.strokeGap = 36;  // 补充天空笔触的间距；越小，笔触越密。
         this.paintingTime = 0;
+        this.hasLooped = false;
         this.paintSpeed = paintingTimeSettings.startSpeed;
         this.paintBlend = 0; // 0：单个运动位置；1：混合一个周期内的运动位置。
-        this.restartTravel = 0;
         this.paintRestartOffset = 0;
+        // 每次重新进入世界时生成时间表，绘制期间不重新随机。
+        this.starAppearTimes = this.makeStarTimes(paintingTimeSettings.starAppearInterval);
+        this.starLeaveTimes = this.makeStarTimes(paintingTimeSettings.starLeaveInterval);
     }
 
     update(elapsedMilliseconds) {
@@ -40,6 +75,7 @@ class TimeMechanic {
         if (elapsedMilliseconds <= 0) return;
         const settings = paintingTimeSettings;
         const cycleSeconds = settings.cycleSeconds;
+        if (this.paintingTime + elapsedMilliseconds / 1000 >= cycleSeconds) this.hasLooped = true;
         // 余数让循环重新开始，同时保留这一帧多出来的时间。
         this.paintingTime = (this.paintingTime + elapsedMilliseconds / 1000) % cycleSeconds;
         this.updatePaintingLoop();
@@ -47,82 +83,108 @@ class TimeMechanic {
     }
 
     updatePaintingLoop() {
-        const settings = paintingTimeSettings;
-        const progress = this.paintingTime / settings.cycleSeconds;
-        const restart = settings.exposureRisePower /
-            (settings.exposureRisePower + settings.exposureFallPower);
-
-        // 一条完整圆峰曲线决定整轮速度，不在某一秒额外叠加强加速。
-        const speedCurve = this.roundedPeak(progress, settings.risePower, settings.fallPower);
-        this.paintSpeed = lerp(settings.startSpeed, settings.peakSpeed, speedCurve);
-
-        // 同一个循环进度，融合的圆峰稍晚，让恢复过程保持连贯。
-        const exposureCurve = this.roundedPeak(progress,
-            settings.exposureRisePower, settings.exposureFallPower);
-        this.paintBlend = settings.maxBlend * exposureCurve;
-
-        // 融合末尾平滑收住运动。
-        const settle = restart - settings.settleSeconds / settings.cycleSeconds;
-        if (progress > settle && progress < restart) {
-            const settling = (progress - settle) / (restart - settle);
-            this.paintSpeed *= 1 - this.easeAcceleration(settling);
-        }
-
-        this.restartTravel = 0;
-        this.paintRestartOffset = 0;
-        if (progress >= restart) {
-            const starting = (progress - restart) / (1 - restart);
-            // 从同一帧的 0 速度起步，不重置渲染器累积的运动位置。
-            this.paintSpeed = settings.startSpeed * this.easeAcceleration(starting);
-            // 对上面的起步速度求累计距离，再归一到 0–1。
-            // 刚起步几乎没有位移，因此画面也不会先发生淡出变化。
-            this.restartTravel = Math.pow(starting, 4) * (5 - 6 * starting + 2 * starting * starting);
-            this.paintBlend = settings.maxBlend * (1 - this.easeAcceleration(this.restartTravel));
-            // 让融合后的画面本身先动起来，而不是只由模糊变清楚。
-            const startingSeconds = settings.cycleSeconds * (1 - restart);
-            const distance = this.restartTravel * settings.startSpeed * startingSeconds / 2;
-            this.paintRestartOffset = Math.sin(distance) * this.paintBlend;
-        }
+        this.paintSpeed = this.curveValue(this.paintingTime, 1);
+        this.paintBlend = this.curveValue(this.paintingTime, 2);
+        this.paintRestartOffset = this.curveValue(this.paintingTime, 3);
     }
 
-    roundedPeak(progress, risePower, fallPower) {
-        // 上升量与回落量相乘，形成两端为 0、中间为 1 的平滑圆峰。
-        // 除以峰值位置，把最高点归一到 1，方便交给 lerp()。
-        if (progress <= 0 || progress >= 1) return 0;
-        const peak = risePower / (risePower + fallPower);
-        const rising = Math.pow(progress / peak, risePower);
-        const falling = Math.pow((1 - progress) / (1 - peak), fallPower);
-        return Math.min(1, rising * falling);
+    curveValue(seconds, column) {
+        // 用数组、循环和 lerp()，将相邻时间点连成柔和曲线。
+        for (let i = 0; i < timeKeyframes.length - 1; i++) {
+            const a = timeKeyframes[i];
+            const b = timeKeyframes[i + 1];
+            if (seconds > b[0]) continue;
+            const duration = b[0] - a[0];
+            const progress = (seconds - a[0]) / duration;
+            // 中间两个控制值沿用相邻点的变化方向，避免连接处突然换挡。
+            const values = [a[column],
+                a[column] + this.changeRate(i, column) * duration / 3,
+                b[column] - this.changeRate(i + 1, column) * duration / 3,
+                b[column]];
+            for (let remaining = 3; remaining > 0; remaining--) {
+                for (let j = 0; j < remaining; j++) {
+                    values[j] = lerp(values[j], values[j + 1], progress);
+                }
+            }
+            return values[0];
+        }
+        return timeKeyframes[timeKeyframes.length - 1][column];
+    }
+
+    changeRate(index, column) {
+        // 首尾和峰顶收平；其他点取两边较缓的变化率。
+        if (index === 0 || index === timeKeyframes.length - 1) return 0;
+        const before = timeKeyframes[index - 1];
+        const here = timeKeyframes[index];
+        const after = timeKeyframes[index + 1];
+        const arriving = (here[column] - before[column]) / (here[0] - before[0]);
+        const leaving = (after[column] - here[column]) / (after[0] - here[0]);
+        if (arriving * leaving <= 0) return 0;
+        if (arriving > 0) return Math.min(arriving, leaving);
+        return Math.max(arriving, leaving);
     }
 
     updateAtmosphere() {
         const settings = paintingTimeSettings;
         const progress = this.paintingTime / settings.cycleSeconds;
-        const peak = settings.risePower / (settings.risePower + settings.fallPower);
-        const restart = settings.exposureRisePower /
-            (settings.exposureRisePower + settings.exposureFallPower);
+        const peak = settings.peakTime / settings.cycleSeconds;
+        const restart = settings.restartTime / settings.cycleSeconds;
         // 星星和笔触仍在整段上升过程中渐增，不集中到高速时才出现。
         let intensity;
         if (progress < peak) {
-            intensity = this.easeAcceleration(progress / peak);
+            intensity = this.smoothProgress(progress / peak);
         } else if (progress < restart) {
             // 星光和密度随曲线回落，直到静止后的起步点。
-            intensity = this.easeAcceleration((1 - progress) / (1 - peak));
+            intensity = this.smoothProgress((1 - progress) / (1 - peak));
         } else {
-            const startingIntensity = this.easeAcceleration((1 - restart) / (1 - peak));
-            intensity = startingIntensity * (1 - this.easeAcceleration(this.restartTravel));
+            const startingIntensity = this.smoothProgress((1 - restart) / (1 - peak));
+            intensity = startingIntensity * (1 - this.paintSpeed / settings.startSpeed);
         }
         this.starBrightness = lerp(0.2, 1, intensity);
-        this.visibleStars = lerp(2, 12, intensity);
+        this.updateStarCount();
         this.strokeGap = lerp(36, 18, intensity);
     }
 
-    easeAcceleration(progress) {
-        // S 形进度：从 0 到 1，两端的变化率都回到 0。
-        // 10p³ - 15p⁴ + 6p⁵，用基本乘法算出，再交给 lerp()。
-        const squared = progress * progress;
-        const cubed = squared * progress;
-        return cubed * (10 - 15 * progress + 6 * squared);
+    updateStarCount() {
+        const s = paintingTimeSettings;
+        // 额外十颗小星逐颗淡入，最后一颗在加速末段仍然出现。
+        const appeared = this.countStarChanges(this.paintingTime - s.starAppearStart,
+            this.starAppearTimes, s.starAppearFade);
+        const lastAppear = s.starAppearStart + 9 * s.starAppearInterval + s.starAppearFade;
+        const leaveStart = lastAppear + s.starLeaveDelay;
+        let leavingTime = this.paintingTime - leaveStart;
+        // 循环换轮不清空星星；上一轮的退场继续到新一轮开头。
+        if (leavingTime < 0 && this.hasLooped) leavingTime += s.cycleSeconds;
+        if ((leavingTime >= 0 && this.paintingTime < s.starAppearStart) || this.paintingTime >= leaveStart) {
+            this.visibleStars = 12 - this.countStarChanges(leavingTime,
+                this.starLeaveTimes, s.starLeaveFade);
+        } else this.visibleStars = 2 + appeared;
+    }
+
+    makeStarTimes(interval) {
+        const times = [];
+        for (let i = 0; i < 10; i++) {
+            // 使用独立随机数，避免改变原画的 randomSeed() 绘画顺序。
+            let jitter = 0;
+            if (i > 0 && i < 9) jitter = (Math.random() - 0.5) * interval * 0.8;
+            times.push(i * interval + jitter);
+        }
+        return times;
+    }
+
+    countStarChanges(elapsed, times, fadeSeconds) {
+        let count = 0;
+        for (let i = 0; i < times.length; i++) {
+            const time = times[i];
+            const progress = Math.max(0, Math.min(1, (elapsed - time) / fadeSeconds));
+            count += this.smoothProgress(progress);
+        }
+        return count;
+    }
+
+    smoothProgress(progress) {
+        // cos 从 1 变到 -1，换算成首尾柔和的 0–1 进度。
+        return (1 - Math.cos(progress * Math.PI)) / 2;
     }
 
 }

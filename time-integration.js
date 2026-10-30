@@ -79,16 +79,16 @@ function drawTimeAtmosphere() {
         if (parentOpacity < 0) parentOpacity = 0;
         if (childOpacity < 0) childOpacity = 0;
         // 原有小星连续交接；只有补充高亮和天空笔触在穿梭中段退场。
-        drawTimeWorld(transition.parent, getStarEntryCameraV2(), parentTime, parentOpacity, 1 - portal.progress);
-        drawTimeWorld(transition.child, portal.childCamera, childTime, childOpacity, portal.progress);
+        drawTimeWorld(transition.parent, getStarEntryCameraV2(), parentTime, parentOpacity, 1 - portal.progress, brushFlowTime);
+        drawTimeWorld(transition.child, portal.childCamera, childTime, childOpacity, portal.progress, portal.child.flowTime || 0);
     } else {
         drawTimeWorld(captureWorldV2(), v2Camera, timeMechanic, 1);
     }
 }
 
-function getTimeStrokeAngle(world, x, y) {
+function getTimeFlow(world, x, y) {
     // 工程连接：复用组员的 flowMap，和已有悬停光效读取方向的方式相同。
-    // 先找到这处像素，再把像素保存的横/纵方向换算成 rotate() 所需角度。
+    // 读取像素里保存的横、纵方向和流动强度。
     let map = world.flowMap;
     let column = Math.floor(x / width * map.width);
     let row = Math.floor(y / height * map.height);
@@ -103,6 +103,15 @@ function getTimeStrokeAngle(world, x, y) {
     let firstChannel = pixelNumber * 4;
     let directionX = map.pixels[firstChannel] / 127.5 - 1;
     let directionY = map.pixels[firstChannel + 1] / 127.5 - 1;
-    // atan2() 将流向图的横、纵方向转换成角度。
-    return Math.atan2(directionY, directionX);
+    const length = Math.hypot(directionX, directionY);
+    if (length > 0.1) {
+        directionX /= length;
+        directionY /= length;
+    } else {
+        directionX = 0;
+        directionY = 0;
+    }
+    return {x: directionX, y: directionY,
+        strength: map.pixels[firstChannel + 2] / 255,
+        angle: Math.atan2(directionY, directionX)};
 }

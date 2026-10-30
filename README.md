@@ -35,12 +35,19 @@ peak near 30 seconds lasting about 2.6 seconds near its highest speed, then
 movement settles to rest before gently starting again.
 
 The movement reaches zero when blending is strongest. The same picture then
-starts moving slowly; clarity, stars and sky strokes return towards their
+starts moving slowly; clarity and sky strokes return towards their
 initial state as that movement builds, rather than on a separate fade timer.
 
 The moon and main stars remain in place. The original small stars gradually
 appear in their original positions, using their original brushstrokes. Their
-positions and the seeded world layout stay unchanged.
+home positions and the seeded world layout stay unchanged. The small-star
+brushstrokes and sky highlights follow the painting's flow clock, direction and
+strength. Their movement settles during blending and starts gently with the paint.
+
+Small stars begin appearing after eight seconds, at uneven intervals averaging
+2.4 seconds. They keep appearing during acceleration, then wait 1.5 seconds
+before leaving at uneven intervals averaging 0.8 seconds. The timing is chosen
+on reset, and the exit continues into the next loop.
 
 ### Code structure
 
@@ -50,8 +57,12 @@ positions and the seeded world layout stay unchanged.
 - `brush_renderer_v2.js` saves the small-star strokes separately so Time can reveal them.
 - `brush_flow_shader.js` averages moving paint samples to create the exposure effect.
 
-Time uses elapsed time from the existing draw loop. The values change through
-simple arithmetic, smooth progress curves and `lerp()`.
+Time uses elapsed time from the existing draw loop. The `timeKeyframes` array
+stores the speed, blending and restart movement at chosen times. A custom
+function joins these values with repeated `lerp()` calls. Star fades use a
+cosine progress curve, and `Math.random()` chooses the uneven intervals once
+on reset. These combine the course's arrays, loops, interpolation and maths;
+the shared shader and world-navigation code are reused from the group project.
 
 ### How to try it
 

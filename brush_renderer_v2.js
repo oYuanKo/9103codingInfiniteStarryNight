@@ -389,8 +389,33 @@ function* buildBrushV2Steps(seed, preservePrevious = false) {
         yield;
     }
 
+    for (let y = 4; y < height * 0.6; y++) {
+        fillBrushSkyGapRow(brushV2.base, y);
+        yield;
+    }
     brushV2.detailSource.records = Float64Array.from(brushV2.detailSource.records);
     console.log("Brush V2 generated:", seed);
+}
+
+function fillBrushSkyGapRow(g, y) {
+    // get() 取邻近颜料色，再沿流向补一小笔；放大时也会重画同一笔。
+    for (let x = 4; x < width - 4; x++) {
+        const pixel = g.get(x, y);
+        if (pixel[0] > 16 || pixel[1] > 32 || pixel[2] > 64) continue;
+        if (brushV2.cypress && pointInCypress(x, y, brushV2.cypress)) continue;
+        const neighbours = [g.get(x - 4, y), g.get(x + 4, y),
+            g.get(x, y - 4), g.get(x, y + 4)];
+        const colour = [0, 0, 0];
+        let count = 0;
+        for (const sample of neighbours) {
+            if (sample[0] <= 16 && sample[1] <= 32 && sample[2] <= 64) continue;
+            for (let channel = 0; channel < 3; channel++) colour[channel] += sample[channel];
+            count++;
+        }
+        if (count === 0) continue;
+        for (let channel = 0; channel < 3; channel++) colour[channel] /= count;
+        paintV2Stroke(g, x, y, brushV2Angle(x, y), 4, 3, colour);
+    }
 }
 
 function initBrushV2(seed, preservePrevious = false) {
@@ -613,9 +638,11 @@ function paintStarCore(g, star) {
 
         const alpha = map(ratio, 0, 1, 240, 145);
 
+        // 第一笔盖住中心，避免随机分布留下蓝色缺口；随机数调用顺序不变。
         paintV2Stroke(
-            g, px, py, angle,
-            len, weight, colour, alpha
+            g, i === 0 ? star.x : px, i === 0 ? star.y : py, angle,
+            len, i === 0 ? max(weight, star.radius * 0.55) : weight,
+            i === 0 ? STAR_BRUSH_COLORS.core : colour, i === 0 ? 255 : alpha
         );
     }
 }
