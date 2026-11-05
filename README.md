@@ -169,7 +169,6 @@ These links identify the artwork and document APIs used in the implementation. T
 - [p5.js `randomSeed()`](https://p5js.org/reference/p5/randomSeed/) and [`noiseSeed()`](https://p5js.org/reference/p5/noiseSeed/): document the seeded generation used to reconstruct a world's base painting.
 - [p5.js `createShader()`](https://p5js.org/reference/p5/createShader/): documents the GLSL shader interface used for the GPU rendering path.
 - [p5.js `lerp()`](https://p5js.org/reference/p5/lerp/): documents interpolation used in the Time curves and other smooth changes.
-- **Audio references:
 - p5.js – Used as the main creative coding library.
 
 [Audio material](https://opengameart.org/)
@@ -180,6 +179,8 @@ These links identify the artwork and document APIs used in the implementation. T
 https://github.com/tyshkovskii/reviewing-code-modularity-skill/blob/main/SKILL.md
 
 https://github.com/lx-wnk/skills/blob/main/skills/component-review/SKILL.md
+
+**Audio references:
 
 ### Audio assets
 
