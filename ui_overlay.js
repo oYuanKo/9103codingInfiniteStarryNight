@@ -12,6 +12,7 @@ const paintingPresentationV2 = (() => {
             timeButton.textContent = timeMechanic.enabled ? 'Stop Time' : 'Start Time';
             timeButton.setAttribute('aria-pressed', String(timeMechanic.enabled));
         };
+        paintingPresentationV2.syncTimeButton = syncTimeButton;
         const toggleTime = () => {
             setTimeEffectEnabled(!timeMechanic.enabled);
             syncTimeButton();
@@ -40,5 +41,5 @@ const paintingPresentationV2 = (() => {
         cleanup = () => { timeButton.removeEventListener('click', toggleTime); clearTimeout(timer); button.removeEventListener('click', toggle); window.removeEventListener('resize', resize); };
         paintingPresentationV2.toggle = toggle;
     }
-    return { init, toggle() {}, dispose() { cleanup?.(); cleanup = null; } };
+    return { init, toggle() {}, syncTimeButton() {}, dispose() { cleanup?.(); cleanup = null; } };
 })();

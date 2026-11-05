@@ -62,7 +62,7 @@ const hash=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
  const startup=await resources(),rows=[];
  const prior=fs.existsSync(baselinePath)?JSON.parse(fs.readFileSync(baselinePath,'utf8')):null;
  let referenceComparisons=0,storedComparisons=0;const crossRunDifferences=[];
- if(measureOnly)await page.keyboard.press('e');
+ if(measureOnly)await page.evaluate(()=>restartPaintingV2(205));
  for(const [key,seed] of (measureOnly?[]:[['q',12],['w',89],['e',205]])){
   await page.keyboard.press(key);assert.equal(await page.evaluate(()=>universeSeed),seed);
   for(const id of ['moon','major-1']){

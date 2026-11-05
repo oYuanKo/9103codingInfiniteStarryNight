@@ -28,8 +28,7 @@ Start by watching the painting for about 35 seconds, then explore it with the mo
 | **F** | Turns paint flow off or on. The Time cycle also pauses while flow is off; this is separate from the shared music pause. |
 | **C** | Toggles cursor disturbance and star-hover light. |
 | **[ / ]** | Decreases or increases flow strength. |
-| **R** | Resets the camera in the current world and cancels an unfinished portal. |
-| **Q / W / E** | Rebuilds the world using seed 12, 89 or 205, and restarts the Time cycle. |
+| **R** | Restarts the original world (seed 12), clears navigation, resets the camera and Time, resumes normal flow, and restarts the first music track. |
 | **H** or the guide button | Shows or hides the interaction guide. |
 
 
@@ -146,3 +145,5 @@ https://github.com/lx-wnk/skills/blob/main/skills/component-review/SKILL.md
 | `assets/starfield-transition.wav` | Portal transition cue | **[TO BE COMPLETED BY QINGYANG FANG]** |
 
 For each asset, add its title, creator, original source link, licence or permission, and any editing performed. If it is original or AI-generated, state who made it and how. The credits for an older, removed transition cue should not be applied to these current files.
+
+For repeatable development tests, call `restartPaintingV2(seed)` explicitly (for example 12, 89 or 205). Q/W/E are no longer user controls. `StarryNight.onReset(callback)` reports a full restart after the new world is ready; stale portal events are discarded.

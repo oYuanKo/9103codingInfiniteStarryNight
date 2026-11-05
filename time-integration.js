@@ -142,3 +142,13 @@ function getTimeFlow(world, x, y) {
         strength: map.pixels[firstChannel + 2] / 255,
         angle: Math.atan2(directionY, directionX)};
 }
+
+function resetTimeEffectV2() {
+    timeMechanic.enabled = false;
+    timeMechanic.reset();
+    timeWorldId = null;
+    timePreviousFlow = null;
+    timeSkipNextFrame = true;
+    timeDisplay = {...timeOffAppearance};
+    timeDisplayTransition = null;
+}
