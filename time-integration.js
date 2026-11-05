@@ -1,4 +1,4 @@
-// The unit for deltaTime is milliseconds; it is provided per frame by the existing draw() function, so there is no need to set up a separate timer.
+// Use deltaTime from draw() as the Time clock, in milliseconds.
 let timeWorldId = null;
 let timePreviousFlow = null;
 let timeSkipNextFrame = false;
@@ -39,11 +39,12 @@ function updateTimeDisplay(elapsedMilliseconds, state) {
     if (progress === 1) timeDisplayTransition = null;
 }
 
-// When returning to the page, do not include the time spent in the background in the total duration.
+// Skip the first frame back so time spent in the background is excluded.
 document.addEventListener('visibilitychange', function () {
     timeSkipNextFrame = true;
 });
 
+// ChatGPT/Codex helped Yang Wu connect Time to the renderer and pause controls.
 function updateTimeMechanic(elapsedMilliseconds, state) {
     if (!state.ready) return;
     if (!timeMechanic.enabled) {
@@ -68,7 +69,7 @@ function updateTimeMechanic(elapsedMilliseconds, state) {
     }
 
     if (timeWorldId !== state.universe.id) {
-        // Upon initial entry, successfully switching worlds, or changing seeds via Q/W/E: always start from "Calm."
+        // Start from Calm when Time is enabled or the world changes.
         timeWorldId = state.universe.id;
         timeMechanic.reset();
     } else {
@@ -77,21 +78,21 @@ function updateTimeMechanic(elapsedMilliseconds, state) {
     updateTimeDisplay(elapsedMilliseconds, state);
     timeSkipNextFrame = false;
 
-    // Time: Takes speed, blending amount, and initial displacement as inputs; direction, color, and brush strokes remain derived from the original artwork.
-    // Strength: Continues to be controlled by the original [/] key.
+    // Pass speed, blending and restart movement to the existing brush renderer.
+    // The [ and ] keys still control flow strength.
     brushFlowSettings.speed = timeMechanic.paintSpeed;
     brushFlowSettings.timeBlend = timeMechanic.paintBlend;
     brushFlowSettings.restartOffset = timeMechanic.paintRestartOffset;
 }
 
 function advanceTimeIfPlaying(elapsedMilliseconds, state) {
-    // Each line checks for a specific pause condition; the timer only starts once all conditions are met.
-    if (state.flow.paused) return; // Space was pressed.
-    if (!state.flow.enabled) return; // Flow was disabled by pressing F.
-    if (state.portal) return; // Moving between two worlds.
-    if (state.loading) return; // Waiting for world generation.
-    if (document.hidden) return; // The page has entered the background.
-    if (timeSkipNextFrame) return; // Just returned from the background.
+    // Advance the clock only when the current world is ready and playing.
+    if (state.flow.paused) return; // Painting is paused.
+    if (!state.flow.enabled) return; // Brush flow is disabled.
+    if (state.portal) return; // The viewer is moving between worlds.
+    if (state.loading) return; // The next world is still being generated.
+    if (document.hidden) return; // The tab is in the background.
+    if (timeSkipNextFrame) return; // The tab has just become visible.
     timeMechanic.update(elapsedMilliseconds);
 }
 
@@ -118,18 +119,18 @@ function getTimePaintLayers(parentWorld, portal) {
 }
 
 function getTimeFlow(world, x, y) {
-    // Engineering integration: Reuse the flowMap from the team member’s implementation; the method for retrieving the flow direction is the same as that used for the existing hover-effect logic. 
-    // Reads the horizontal and vertical direction components, as well as the flow intensity, stored within the pixel data.
+    // Reuse the group's flow map, as the hover light does.
+    // Each pixel stores horizontal and vertical direction and local flow strength.
     let map = world.flowMap;
     let column = Math.floor(x / width * map.width);
     let row = Math.floor(y / height * map.height);
-    // The coordinates must fall within the flow diagram; reading outside the diagram is not permitted.
+    // Clamp the coordinates to the flow map.
     if (column < 0) column = 0;
     if (column >= map.width) column = map.width - 1;
     if (row < 0) row = 0;
     if (row >= map.height) row = map.height - 1;
 
-    // Each pixel occupies 4 values. The first two values ​​are used to store the horizontal and vertical components.
+    // Each pixel has four channels. The first two store the flow direction.
     let pixelNumber = row * map.width + column;
     let firstChannel = pixelNumber * 4;
     let directionX = map.pixels[firstChannel] / 127.5 - 1;

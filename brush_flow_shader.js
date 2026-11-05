@@ -331,7 +331,7 @@ vec4 samplePainting(sampler2D paint, sampler2D flow, sampler2D timePaint, vec2 p
   // Skip extra samples while the exposure offset is still below a visible pixel.
   if (exposure < .0001 || u_flowEnabled <= 0.0) return audioLight(movingPaint, point, audioChild);
 
-  // Average 16 positions along the existing motion.
+  // ChatGPT/Codex helped Yang Wu blend paint by averaging 16 motion samples.
   // Widening the exposure merges moving pigment instead of fading to a still image.
   // Keep the same flow direction, terrain protection, cursor and screen-space cap.
   vec4 exposedPaint = vec4(0.0);
