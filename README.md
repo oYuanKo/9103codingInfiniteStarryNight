@@ -14,7 +14,7 @@ The picture is generated from brushstrokes rather than displayed as a downloaded
 
 ## How to interact
 
-Start by watching the painting for about 35 seconds, then explore it with the mouse.
+The painting starts with normal flow and Time off. Select **Start Time** to watch its 34-second cycle, or explore immediately with the mouse.
 
 | Control | What it does |
 |---|---|
@@ -24,6 +24,7 @@ Start by watching the painting for about 35 seconds, then explore it with the mo
 | Scroll outward | Zooms out. At the minimum zoom, keep scrolling to move into the parent world. An outer world can also be generated from the starting world. |
 | Reverse scrolling during a portal transition | Reverses the transition. Scrolling back to its starting boundary cancels it. |
 | Click the painting | Starts or unlocks audio if the browser has blocked autoplay. |
+| **Start Time / Stop Time** | Start Time begins a fresh 34-second cycle of changing paint flow, starlight and sky density. Stop Time returns to normal flow. F pauses or resumes the running cycle together with the painting and music. |
 | **F** | Pauses or resumes paint flow, the Time cycle and music, including transition sounds. Navigation controls remain available. |
 | **C** | Toggles cursor disturbance and star-hover light. Developer only, not shown in guidance for user |
 | **[ / ]** | Decreases or increases flow strength. Developer only, not shown in guidance for user |

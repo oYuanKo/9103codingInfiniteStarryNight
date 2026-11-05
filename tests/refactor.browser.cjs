@@ -1,3 +1,4 @@
+const outputDir = require('./test-output.cjs')(__filename);
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -48,7 +49,7 @@ if (!baseline) {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   let browser;
   try {
-    browser = await chromium.launch({ channel: 'msedge', headless: true });
+    browser = await chromium.launch({ channel: process.env.BROWSER_CHANNEL || 'msedge', headless: true });
     const page = await browser.newPage({ viewport: { width: 1000, height: 800 } }), errors = [];
     page.on('pageerror', e => errors.push(e.message));
     page.on('console', m => { if (m.type() === 'error' && !m.text().includes('404')) errors.push(m.text()); });
@@ -82,9 +83,10 @@ if (!baseline) {
       }, name);
     }
     const hashes = {};
-    const screenshot = name => page.locator('canvas').first().screenshot({ path: path.join(__dirname, 'step8-' + (baseline ? 'before' : 'after') + '-' + name + '.png') });
+    const screenshot = name => page.locator('canvas').first().screenshot({ path: path.join(outputDir, 'step8-' + (baseline ? 'before' : 'after') + '-' + name + '.png') });
     for (const [index, seed] of seeds.entries()) {
-      await page.keyboard.press(['q', 'w', 'e'][index]);
+      if (original) await page.keyboard.press(['q', 'w', 'e'][index]);
+      else await page.evaluate(seed=>{restartPaintingV2(seed);brushFlowSettings.paused=true;brushFlowSettings.enabled=false;brushFlowSettings.cursorEnabled=false},seed);
       assert.equal(await page.evaluate(() => universeSeed), seed);
       await page.evaluate(() => draw());
       hashes[seed] = await compareLive('seed ' + seed);

@@ -144,6 +144,7 @@ uniform float u_progress;
 uniform float u_portalActive;
 uniform float u_microEnabled;
 uniform vec2 u_portalAnchor;
+${AUDIO_PAINTING_GLSL}
 
 float pigmentHash(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -223,7 +224,8 @@ vec4 withTimePaint(vec4 base, sampler2D timePaint, vec2 uv) {
 vec4 samplePainting(sampler2D paint, sampler2D flow, sampler2D timePaint, vec2 point,
                     vec3 camera, float time,
                     sampler2D detailA, sampler2D detailB, vec4 rectA, vec4 rectB, vec4 weights,
-                    vec2 morphDirection, float morph, float reflectEdges, float exposure, float restartOffset) {
+                    vec2 morphDirection, float morph, float reflectEdges, float exposure, float restartOffset, float audioChild) {
+  point = audioWarp(point, audioChild);
   vec2 uv = clamp(point / u_resolution, vec2(0.0), vec2(1.0));
   vec2 screen = vTexCoord * u_resolution;
   vec2 localScale = cameraScale(screen, camera, reflectEdges);
@@ -326,7 +328,7 @@ vec4 samplePainting(sampler2D paint, sampler2D flow, sampler2D timePaint, vec2 p
 
   vec4 movingPaint = withTimePaint(detailedPaint(paint, detailA, detailB, rectA, rectB, weights, displacedUV, camera.z), timePaint, displacedUV);
   // Skip extra samples while the exposure offset is still below a visible pixel.
-  if (exposure < .0001 || u_flowEnabled <= 0.0) return movingPaint;
+  if (exposure < .0001 || u_flowEnabled <= 0.0) return audioLight(movingPaint, point, audioChild);
 
   // Average 16 positions along the existing motion.
   // Widening the exposure merges moving pigment instead of fading to a still image.
@@ -343,7 +345,7 @@ vec4 samplePainting(sampler2D paint, sampler2D flow, sampler2D timePaint, vec2 p
     exposedPaint += withTimePaint(detailedPaint(paint, detailA, detailB, rectA, rectB, weights,
       sampleUV, camera.z), timePaint, sampleUV);
   }
-  return exposedPaint / 16.0;
+  return audioLight(exposedPaint / 16.0, point, audioChild);
 }
 
 void main() {
@@ -363,12 +365,12 @@ void main() {
   float phase = u_progress * u_portalActive;
   if (phase <= 0.0) {
     gl_FragColor = samplePainting(u_paint, u_flowMap, u_timePaint, parentPoint, u_camera, u_time,
-      u_detailA, u_detailB, u_detailRectA, u_detailRectB, u_detailWeights, vec2(0.0), 0.0, 0.0, u_timeBlend.x, u_restartOffset.x);
+      u_detailA, u_detailB, u_detailRectA, u_detailRectB, u_detailWeights, vec2(0.0), 0.0, 0.0, u_timeBlend.x, u_restartOffset.x, 0.0);
     return;
   }
   if (phase >= 1.0) {
     gl_FragColor = samplePainting(u_childPaint, u_childFlow, u_childTimePaint, childPoint, u_childCamera, u_childTime,
-      u_childDetailA, u_childDetailB, u_childDetailRectA, u_childDetailRectB, u_childDetailWeights, vec2(0.0), 0.0, 0.0, u_timeBlend.y, u_restartOffset.y);
+      u_childDetailA, u_childDetailB, u_childDetailRectA, u_childDetailRectB, u_childDetailWeights, vec2(0.0), 0.0, 0.0, u_timeBlend.y, u_restartOffset.y, 1.0);
     return;
   }
   vec2 parentFlow = texture2D(u_flowMap, clamp(parentPoint/u_resolution, 0.0, 1.0)).rg * 2.0 - 1.0;
@@ -393,9 +395,9 @@ void main() {
   float structure = smoothstep(arrival-.02,arrival+.20,phase);
   vec2 blendedFlow = turnFlow(parentFlow, childFlow, depth);
   vec4 parent = samplePainting(u_paint, u_flowMap, u_timePaint, parentPoint, u_camera, u_time,
-    u_detailA, u_detailB, u_detailRectA, u_detailRectB, u_detailWeights, blendedFlow, depth, 0.0, u_timeBlend.x, u_restartOffset.x);
+    u_detailA, u_detailB, u_detailRectA, u_detailRectB, u_detailWeights, blendedFlow, depth, 0.0, u_timeBlend.x, u_restartOffset.x, 0.0);
   vec4 child = samplePainting(u_childPaint, u_childFlow, u_childTimePaint, childPoint, u_childCamera, u_childTime,
-    u_childDetailA, u_childDetailB, u_childDetailRectA, u_childDetailRectB, u_childDetailWeights, blendedFlow, 1.0-depth, 1.0, u_timeBlend.y, u_restartOffset.y);
+    u_childDetailA, u_childDetailB, u_childDetailRectA, u_childDetailRectB, u_childDetailWeights, blendedFlow, 1.0-depth, 1.0, u_timeBlend.y, u_restartOffset.y, 1.0);
   // Transport child colour along its flow before resolving its composition.
   // Flow-aligned samples transfer chroma before restoring child luminance/contrast.
   vec2 spread = normalize(childFlow+vec2(.00001))*vec2(24.0)/u_resolution;
@@ -558,7 +560,13 @@ function drawBrushFlowShader(present = true, camera = null, portal = null) {
     const restartOffset = brushFlowSettings.restartOffset || 0;
     // The world being left keeps its Time pose; the destination starts fresh.
     const leavingChild = portal && nestedV2.transition && nestedV2.transition.direction === 'out';
+    const audioParent = AudioPaintingV2.geometry(parentWorld);
+    const audioChild = portal ? AudioPaintingV2.geometry(child) : audioParent;
     const uniforms = {
+        u_audioBands: AudioPaintingV2.values,
+        u_audioBounds: audioParent.bounds, u_audioChildBounds: audioChild.bounds,
+        u_audioTree: audioParent.tree, u_audioChildTree: audioChild.tree,
+        u_audioLights: audioParent.lights, u_audioChildLights: audioChild.lights,
         u_paint: brushV2.base, u_flowMap: brushFlowMap,
         u_timePaint: timePaint.parent, u_childTimePaint: timePaint.child,
         u_childPaint: child.base, u_childFlow: child.flowMap,

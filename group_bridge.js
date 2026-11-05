@@ -62,6 +62,13 @@ const { StarryNight, publishGroupFrameV2, queueGroupPortalV2, publishGroupResetV
                 hoverSpread: hoverSpread(), pointerSpeed }),
             portal: portal ? Object.freeze({ ...portalCopy(portal), childCamera: cameraCopy(render.childCamera) }) : null,
             loading: !!nestedV2.pending,
+            // Read the actual Time clock after its frame update; never run an audio clock.
+            time: typeof timeMechanic === 'undefined' ? null : Object.freeze({
+                enabled: timeMechanic.enabled, seconds: timeMechanic.paintingTime,
+                paintSpeed: timeMechanic.paintSpeed,
+                peakTime: paintingTimeSettings.peakTime, restartTime: paintingTimeSettings.restartTime,
+                startSpeed: paintingTimeSettings.startSpeed,
+                peakSpeed: timeMechanic.curveValue(paintingTimeSettings.peakTime, 1) }),
             flow: Object.freeze({ speed: brushFlowSettings.speed, strength: brushFlowSettings.strength,
                 enabled: brushFlowSettings.enabled, paused: brushFlowSettings.paused,
                 cursorEnabled: brushFlowSettings.cursorEnabled }) });

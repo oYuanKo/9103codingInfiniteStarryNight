@@ -1,8 +1,11 @@
+const outputDir = require('./test-output.cjs')(__filename);
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),http=require('node:http');
 const {chromium}=require('playwright');const root=path.resolve(__dirname,'..');
 const diagnose=process.argv.includes('--diagnose-old')?'old':process.argv.includes('--diagnose-new')?'new':null;
 const measureOnly=process.argv.includes('--measure-only');
 const capture=process.argv.includes('--capture-mode-a');
+// Historical pixel identity remains opt-in; current Time layers intentionally changed the shader.
+const historicalReference=process.argv.includes('--historical-reference')||capture||!!diagnose;
 assert(!(measureOnly&&capture),'Timing mode must not overwrite the pre-cleanup baseline');
 const baselinePath=path.join(__dirname,'step11-final-modeA-baseline.log');
 const crypto=require('node:crypto');
@@ -43,13 +46,13 @@ const hash=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
  for(const file of manifest.files)assert.equal(hash(Buffer.from(fs.readFileSync(path.join(root,file.archived),'utf8').replace(/\r\n/g,'\n'))),file.sha256,'Archive changed: '+file.archived);
  const reference=fs.readFileSync(path.join(root,'experiments/cosmic_threshold/source/brush_flow_shader.js'),'utf8');
  const factory=reference.slice(reference.indexOf('function drawBrushFlowShader('));
- await page.evaluate(({source,factory,capture})=>{
+ await page.evaluate(({source,factory,capture,historicalReference})=>{
   if(capture && typeof cosmicThresholdSettingsV2==='undefined')throw Error('Capture requires pre-cleanup experimental runtime in Mode A');
   const fragment=new Function(source+';return BRUSH_FLOW_FRAG;')();
-  if(new Function(source+';return BRUSH_FLOW_VERT;')()!==BRUSH_FLOW_VERT)throw Error('Accepted vertex shader changed');
-  if(fragment!==BRUSH_FLOW_FRAG)throw Error('Accepted fragment shader changed');
+  if(historicalReference&&new Function(source+';return BRUSH_FLOW_VERT;')()!==BRUSH_FLOW_VERT)throw Error('Accepted vertex shader changed');
+  if(historicalReference&&fragment!==BRUSH_FLOW_FRAG)throw Error('Accepted fragment shader changed');
   window.drawModeAReference=new Function('const cosmicThresholdSettingsV2={enabled:false};let cosmicFlowWarmedV2=false;function usesBrushCosmosV2(){return false};'+factory+';return drawBrushFlowShader;')();
- },{source:reference,factory,capture});
+ },{source:reference,factory,capture,historicalReference});
  const resources=()=>page.evaluate(()=>({
   ...finalProbe,shaderPrograms:brushFlowProgram._glProgram?1:0,
   experimentalShaderObjects:(typeof cosmicFlowProgramV2==='undefined'?0:1)+(typeof cosmicFormationProgramV2==='undefined'?0:1),
@@ -63,17 +66,17 @@ const hash=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
  const prior=fs.existsSync(baselinePath)?JSON.parse(fs.readFileSync(baselinePath,'utf8')):null;
  let referenceComparisons=0,storedComparisons=0;const crossRunDifferences=[];
  if(measureOnly)await page.evaluate(()=>restartPaintingV2(205));
- for(const [key,seed] of (measureOnly?[]:[['q',12],['w',89],['e',205]])){
-  await page.keyboard.press(key);assert.equal(await page.evaluate(()=>universeSeed),seed);
+ for(const seed of (measureOnly?[]:[12,89,205])){
+  await page.evaluate(seed=>{restartPaintingV2(seed);brushFlowSettings.paused=true;brushFlowSettings.cursorEnabled=false},seed);assert.equal(await page.evaluate(()=>universeSeed),seed);
   for(const id of ['moon','major-1']){
    await page.evaluate(id=>startStar(id),id);
    await page.evaluate(()=>{brushFlowTime=0;nestedV2.transition.child.flowTime=0});
    for(const p of [0,.2,.35,.45,.5,.6,.7,.85,1]){
     await page.evaluate(p=>settle(p),p);
-    const result=await page.evaluate(p=>{
+    const result=await page.evaluate(({p,historicalReference})=>{
      const update=updateBrushDetailsV2;updateBrushDetailsV2=()=>{};
      try{const camera=getStarEntryCameraV2(),portal=getPortalRenderV2();
-      drawModeAReference(true,camera,portal);const reference=pixels();
+      if(historicalReference)drawModeAReference(true,camera,portal);else drawStarEntryV2();const reference=pixels();
       drawStarEntryV2();const actual=pixels();
       let count=0,max=0;for(let i=0;i<actual.length;i++){const d=Math.abs(reference[i]-actual[i]);if(d)count++;max=Math.max(max,d)}
       return {bytes:Array.from(actual),count,max,parent:[camera.x,camera.y,camera.zoom],child:portal.childCamera,
@@ -82,9 +85,9 @@ const hash=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
     },p);
     assert.equal(result.count,0,JSON.stringify({seed,id,p,count:result.count,max:result.max}));referenceComparisons++;
     const row={seed,id,p,hash:hash(Buffer.from(result.bytes)),parent:result.parent,child:result.child,parentWeights:result.parentWeights,childWeights:result.childWeights};rows.push(row);
-    if(diagnose){await page.locator('canvas').first().screenshot({path:path.join(root,'tests','step11-final-diagnose-'+diagnose+'.png')});console.log(JSON.stringify({diagnose,row,stored:prior.rows[0]}));return;}
-    if(!capture&&prior){const previous=prior.rows.find(r=>r.seed===seed&&r.id===id&&r.p===p);assert(previous);const {hash:actualHash,...actualState}=row,{hash:previousHash,...previousState}=previous;assert.deepEqual(actualState,previousState,'Captured Mode A state mismatch '+seed+'/'+id+'/'+p);if(actualHash!==previousHash)crossRunDifferences.push({seed,id,p,actualHash,previousHash});storedComparisons++}
-    if(seed===12&&id==='moon')await page.locator('canvas').first().screenshot({path:path.join(root,'tests','step11-final-'+(capture?'before':'after')+'-'+Math.round(p*100)+'.png')});
+    if(diagnose){await page.locator('canvas').first().screenshot({path:path.join(outputDir,'step11-final-diagnose-'+diagnose+'.png')});console.log(JSON.stringify({diagnose,row,stored:prior.rows[0]}));return;}
+    if(historicalReference&&!capture&&prior){const previous=prior.rows.find(r=>r.seed===seed&&r.id===id&&r.p===p);assert(previous);const {hash:actualHash,...actualState}=row,{hash:previousHash,...previousState}=previous;assert.deepEqual(actualState,previousState,'Captured Mode A state mismatch '+seed+'/'+id+'/'+p);if(actualHash!==previousHash)crossRunDifferences.push({seed,id,p,actualHash,previousHash});storedComparisons++}
+    if(seed===12&&id==='moon')await page.locator('canvas').first().screenshot({path:path.join(outputDir,'step11-final-'+(capture?'before':'after')+'-'+Math.round(p*100)+'.png')});
    }
    await page.evaluate(()=>finishPortalV2(false));
   }
@@ -116,7 +119,7 @@ const hash=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
  if(!capture){assert.equal(final.experimentalShaderObjects,0);assert.equal(final.experimentalScripts,0);assert.equal(final.cosmicCache,null);assert.equal(final.prototypeCacheExists,false);assert.equal(startup.shaderObjects,1)}
  const report={browser:browser.version(),rows,startup,final,perf,crossRunDifferences};
  if(capture)fs.writeFileSync(baselinePath,JSON.stringify(report,null,2));
- else fs.writeFileSync(path.join(root,'tests/step11-final-'+(measureOnly?'timing':'report')+'.log'),JSON.stringify(report,null,2));
+ else fs.writeFileSync(path.join(outputDir,'step11-final-'+(measureOnly?'timing':'report')+'.log'),JSON.stringify(report,null,2));
  console.log(JSON.stringify({capture,referenceComparisons,storedComparisons,crossRunHashDifferences:crossRunDifferences.length,startup,final,perf}));assert.deepEqual(errors,[]);
 
  if(!capture&&!measureOnly){
@@ -134,6 +137,6 @@ const hash=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
   }
   assert.deepEqual(errors,[]);
  }
- console.log(measureOnly?'PASS isolated timing and production resource checks':'PASS accepted Mode A exact source/same-resource pixels, captured camera/LOD states and resources');
+ console.log(measureOnly?'PASS comparative timing and production resource checks':historicalReference?'PASS historical Mode A exact source/same-resource pixels and resources':'PASS current stable-frame pixels, seeded worlds, resources and wheel reversal (historical equality not asserted)');
  }finally{if(browser)await browser.close();await new Promise(r=>server.close(r))}
 })().catch(e=>{console.error(e);process.exitCode=1});

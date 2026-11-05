@@ -1,3 +1,4 @@
+const outputDir = require('./test-output.cjs')(__filename);
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -21,12 +22,12 @@ const root = path.resolve(__dirname, '..');
     page.on('pageerror', e => errors.push(e.message));
     page.on('console', m => { if(m.type()==='error' && !m.text().includes('404')) errors.push(m.text()); });
     await page.goto(`http://127.0.0.1:${server.address().port}`);
-    await page.waitForFunction(() => typeof v2Camera !== 'undefined' && v2Camera && brushFlowMap, {timeout:30000});
+    await page.waitForFunction(() => typeof v2Camera !== 'undefined' && v2Camera && brushFlowMap, null, {timeout:30000});
     console.log('Browser:', browser.version(), 'p5:', await page.evaluate(()=>p5.VERSION));
     const canvas = page.locator('canvas').first();
     const box = await canvas.boundingBox();
-    async function move(x=400,y=300) {await page.mouse.move(box.x+x,box.y+y);}
-    async function settle() {await page.waitForFunction(()=>!nestedV2.transition && !nestedV2.pending, {timeout:30000});}
+    async function move(x=400,y=300) {await page.mouse.move(box.x+(x)*box.width/800,box.y+(y)*box.height/600);}
+    async function settle() {await page.waitForFunction(()=>!nestedV2.transition && !nestedV2.pending, null, {timeout:30000});}
     async function state() {return page.evaluate(()=>({seed:universeSeed,zoom:v2Camera.zoom,nodes:nestedV2.nodes.size,cached:[...nestedV2.nodes].filter(n=>n.world).length}));}
     async function wheel(delta) {await page.mouse.wheel(0,delta);await page.waitForTimeout(90);}
     async function aim(starId='moon') {
@@ -35,7 +36,7 @@ const root = path.resolve(__dirname, '..');
     }
     async function enter(starId='moon') {
       await aim(starId);
-      await wheel(-900);
+      await wheel(-Math.log(3)/.0015);
       await page.waitForFunction(()=>v2Camera.zoom>2.99);
       await aim(starId);
       await wheel(-2500);
@@ -46,7 +47,7 @@ const root = path.resolve(__dirname, '..');
       await page.waitForFunction(()=>v2Camera.zoom<1.01);
       await wheel(2500);await settle();
     }
-    async function reset(k='q') {await page.keyboard.press(k);await page.waitForTimeout(200);}
+    async function reset(seed=12) {await page.evaluate(seed=>restartPaintingV2(seed),seed);}
     await move();
     await page.evaluate(()=>{window.original=currentWorldNodeV2();window.originalBase=brushV2.base;});
     await enter();
@@ -91,22 +92,22 @@ const root = path.resolve(__dirname, '..');
       handleStarEntryWheelV2(-100);const cancelled=!nestedV2.pending && !nestedV2.transition;loop();return waiting&&cancelled;
     }));
     console.log('PASS reversal while outer generation is pending');
-    for (const [key,seed] of [['w',89],['e',205],['q',12]]) {
-      await reset(key);assert.equal((await state()).seed,seed);
+    for (const seed of [89,205,12]) {
+      await reset(seed);assert.equal((await state()).seed,seed);
       assert(await page.evaluate(()=>nestedV2.nodes.size===1 && !nestedV2.pending && !nestedV2.transition && !nestedV2.preload && !nestedV2.current.parent));
     }
-    console.log('PASS Q/W/E reset discards graph and jobs');
-    for (const [key,field] of [['f','enabled'],['Space','paused'],['c','cursorEnabled']]) {
+    console.log('PASS explicit seeded reset discards graph and jobs');
+    for (const [key,field] of [['f','paused'],['c','cursorEnabled']]) {
       const before=await page.evaluate(f=>brushFlowSettings[f],field);await page.keyboard.press(key);
       assert.equal(await page.evaluate(f=>brushFlowSettings[f],field),!before);await page.keyboard.press(key);
     }
     await enter();await page.keyboard.press('r');await page.waitForTimeout(100);assert.equal((await state()).zoom,1);
-    console.log('PASS F / Space / C / R');
+    console.log('PASS F / C / R');
     await move(200,200);await page.waitForTimeout(100);await move(350,250);
     await page.waitForTimeout(60);assert(await page.evaluate(()=>brushCursor.active>0&&brushCursor.speed>0));
     await aim();await wheel(-900);await page.waitForFunction(()=>v2Camera.zoom>2.99);await aim();await wheel(-400);
     await page.waitForFunction(()=>!!nestedV2.transition);
-    await reset('w');assert.equal((await state()).seed,89);
+    await reset(89);assert.equal((await state()).seed,89);
     assert(await page.evaluate(()=>!nestedV2.transition&&!nestedV2.pending&&nestedV2.nodes.size===1));
     await move();await wheel(300);await page.waitForFunction(()=>!!nestedV2.transition);
     await page.keyboard.press('r');await settle();assert.equal((await state()).zoom,1);
@@ -155,7 +156,7 @@ const root = path.resolve(__dirname, '..');
     assert.equal(stress.evicted,true);assert.equal(stress.restored,true);assert.equal(stress.pinned,true);
     assert.equal(stress.cleanTextures,0);assert.equal(stress.activeSafe,true);assert.equal(stress.noThrash,true);
     console.log('PASS cache eviction, pixel-identical regeneration, ancestor pinning, partial-job disposal:',stress);
-    await canvas.screenshot({path:path.join(root,'tests','step6c.png')});
+    await canvas.screenshot({path:path.join(outputDir,'step6c.png')});
     console.log('Resources:', await page.evaluate(()=>({cached:[...nestedV2.nodes].filter(n=>n.world).length,graphics:document.querySelectorAll('canvas').length,textures:brushFlowBuffer._renderer.textures.size})));
     assert.deepEqual(errors,[]);
     console.log('PASS no browser JavaScript/WebGL errors');
