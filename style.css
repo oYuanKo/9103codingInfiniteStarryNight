@@ -34,3 +34,9 @@ body { font: 12px/1.5 Arial, sans-serif; overflow: auto; }
 #painting-help .guide-keys > div { display: flex; align-items: center; gap: 10px; margin-top: 7px; }
 #painting-help .guide-keys dt, #painting-help .guide-keys dd { margin: 0; }
 #painting-help kbd { display: inline-block; min-width: 20px; padding: 1px 2px; text-align: center; border: 1px solid #9e8150; border-radius: 3px; font: inherit; color: #f3e6cf; }
+
+/* Match the guide without changing the Time control's layout footprint. */
+#time-toggle { color: #eee1c8; border-color: #9e8150; font-family: Georgia, 'Times New Roman', serif; }
+#time-toggle:hover { color: #fff2cf; border-color: #e2b96f; }
+#time-toggle:focus-visible { outline: 2px solid #edc77e; outline-offset: 4px; }
+#time-toggle[aria-pressed="true"] { color: #f3e6cf; border-color: #e2b96f; background: #26374a; }
