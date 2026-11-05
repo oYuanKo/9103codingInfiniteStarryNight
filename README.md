@@ -37,7 +37,7 @@ The painting starts with normal flow and Time off. Select **Start Time** to watc
 | Member | Main mechanic and contribution |
 |---|---|
 | **Yuan Kuang** | **Perlin Noise & Randomness**, plus user input, cursor-centred zoom and nested-world navigation. Developed the painterly core, shader flow, brush detail and star-hover light. Also worked on shared integration and later Time-layer/blending refinements. |
-| **Qingyang Fang** | **Audio-based interactions**. **[TO BE COMPLETED BY QINGYANG FANG]** |
+| **Qingyang Fang** | **Audio-based interactions**. My contribution focused on the Audio mechanic, using audio interaction to connect sound with the visual environment. Different soundtracks represent different environments or worlds，audio playback is connected to user interactions and transitions between environments. |
 | **Yang Wu** | **Time-based effects and transitions**. Developed the Time cycle, changing small stars and sky highlights, and their integration with the shared painting. Also connected Space to the Audio module and repaired gaps in the painted vortex. |
 
 These are the main responsibilities, not exclusive ownership of every shared file. Audio, Time and the core painting work together through the same application. Yang's shared audio-pause work and Yuan's later Time-rendering refinements build on the relevant mechanic owner's implementation.
@@ -63,8 +63,6 @@ New worlds are generated in small steps across frames and cached for reuse. When
 The title describes the feeling of continuing into connected worlds. Detail has finite levels. Drawing resources are bounded to eight world slots including generation; navigation links and seeds remain available, and evicted paintings are regenerated with the same composition when revisited. This bounds drawing resources rather than the size of the navigation graph; rebuilding can add generation time on a return visit.
 
 ### 3. Audio-based interactions
-
-**[TO BE COMPLETED BY QINGYANG FANG: review and expand this implementation summary, personal contribution, references and asset credits.]**
 
 `audio_module.js` manages the three background tracks, transition sound, playback rate and shared pause. Music follows world depth: starting with track 1, inward navigation selects **1 → 2 → 3 → 1 → 2 → 3**, and returning selects the track associated with that depth. R restarts the initial world and the first track. Hovering over a major star or the moon still changes volume.
 
@@ -147,6 +145,12 @@ This statement describes AI use in my own contribution and my later changes to s
 
 ### Qingyang Fang:
 
+#### AI tools and scope
+
+ChatGPT/Codex was used as a supplementary tool during development. It helped refine code comments, improve variable and function descriptions, and clarify the structure of the audio interaction logic.
+
+The audio concept, mechanic design, implementation and final integration were developed and reviewed by the team.
+
 
 
 ### Yang Wu:
@@ -165,7 +169,10 @@ These links identify the artwork and document APIs used in the implementation. T
 - [p5.js `randomSeed()`](https://p5js.org/reference/p5/randomSeed/) and [`noiseSeed()`](https://p5js.org/reference/p5/noiseSeed/): document the seeded generation used to reconstruct a world's base painting.
 - [p5.js `createShader()`](https://p5js.org/reference/p5/createShader/): documents the GLSL shader interface used for the GPU rendering path.
 - [p5.js `lerp()`](https://p5js.org/reference/p5/lerp/): documents interpolation used in the Time curves and other smooth changes.
-- **Audio references: [TO BE COMPLETED BY QINGYANG FANG]**
+- **Audio references:
+- p5.js – Used as the main creative coding library.
+
+[Audio material](https://opengameart.org/)
 
 
 ### Code Structures
@@ -178,6 +185,7 @@ https://github.com/lx-wnk/skills/blob/main/skills/component-review/SKILL.md
 
 | File | Use | Creator, source and licence |
 |---|---|---|
+[Audio material](https://opengameart.org/)
 | `assets/scene-01.mp3` | First scene's looping music | **[TO BE COMPLETED BY QINGYANG FANG]** |
 | `assets/scene-02.wav` | Second scene's looping music | **[TO BE COMPLETED BY QINGYANG FANG]** |
 | `assets/scene-03.mp3` | Third and deeper scenes' looping music | **[TO BE COMPLETED BY QINGYANG FANG]** |
