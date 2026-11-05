@@ -304,7 +304,7 @@ function* buildBrushV2Steps(seed, preservePrevious = false, variedStars = false)
             const length = random(15, 25);
             let weight = random(8, 12);
 
-            // Widen the existing centre stroke to cover the gap.
+            // ChatGPT/Codex helped Yang Wu cover the vortex gap by widening this stroke.
             // Keeping the same strokes and random calls also preserves zoomed details.
             if (abs(x - width * 0.48) < step / 2 &&
                 abs(y - height * 0.32) < step / 2) {
@@ -368,7 +368,8 @@ function* buildBrushV2Steps(seed, preservePrevious = false, variedStars = false)
 }
 
 function fillBrushSkyGapRow(g, y) {
-    // get() samples a nearby pigment color and adds a small stroke along the flow direction; this same stroke is redrawn when the view is zoomed in.
+    // ChatGPT/Codex helped Yang Wu fill sky gaps with colours sampled from nearby paint.
+    // Use get() to sample nearby paint, then fill the gap with a stroke that also appears when zoomed in.
     // Read an unchanged scanline once instead of one canvas readback per pixel.
     // Refresh after every painted stroke: later samples must see earlier paint.
     const canReadRow = g.pixelDensity() === 1;
@@ -549,7 +550,7 @@ function paintStarCore(g, star) {
 
         const alpha = map(ratio, 0, 1, 240, 145);
 
-        // The first stroke covers the center, preventing gaps of blue from appearing due to random distribution; the order of random number calls remains unchanged.
+        // Cover the star centre with the first stroke and preserve the order of random calls.
         paintV2Stroke(
             g, i === 0 ? star.x : px, i === 0 ? star.y : py, angle,
             len, i === 0 ? max(weight, star.radius * 0.55) : weight,

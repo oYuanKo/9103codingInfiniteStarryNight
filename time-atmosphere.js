@@ -1,4 +1,4 @@
-// Paint Time details in world space BEFORE the shared flow/exposure shader.
+// ChatGPT/Codex helped Yang Wu draw Time's small stars and sky highlights before shader blending.
 // Reuse two surfaces across worlds; never allocate one per animation frame.
 const timePaintBuffers = [];
 // AI acknowledgement (Yuan): Yuan's world-space compositing revision was made with OpenAI ChatGPT and its coding tools. 
@@ -21,7 +21,7 @@ function drawTimePaintLayer(slot, world, timeValues, opacity = 1) {
 }
 
 function isTimeStarNearby(stars, x, y, margin) {
-    // Leave space for the stars and moon in the original artwork, and ensure that any added brushstrokes do not cover them.
+    // Leave room around the original stars and moon.
     for (let i = 0; i < stars.length; i++) {
         let star = stars[i];
         let distance = dist(x, y, star.x, star.y);
@@ -32,16 +32,16 @@ function isTimeStarNearby(stars, x, y, margin) {
 }
 
 function drawTimeSkyStrokes(g, world, timeValues, opacity) {
-    // Draw only the sky above and the right side of the trees, without obscuring the mountains, villages, or cypress trees.
-    // Fix the starting point; retain the base strokes at regular intervals, while allowing the intermediate strokes to gradually fade in based on density.
-    // Do not directly alter the loop step size, so as to prevent the existing strokes from shifting or jumping as the density changes.
+    // Draw in the upper sky to the right of the cypress.
+    // Keep every other stroke visible and fade in the ones between as density rises.
+    // Fixed spacing keeps the strokes in place as the density changes.
     const density = (36 - timeValues.strokeGap) / 18;
     for (let row = 0; row < 5; row++) {
         for (let mark = 0; mark < 31; mark++) {
             const visibility = mark % 2 === 0 ? 1 : density;
             if (visibility <= 0) continue;
             const x = 240 + mark * 18 + Math.sin(mark * 2.3 + row) * 4;
-            // The base height for each line, plus two fluctuations—one large and one small.
+            // Add a broad wave and a smaller ripple to each row's base height.
             let rowHeight = 85 + row * 43;
             let waveAngle = x * 0.012 + row * 0.7;
             let mainWave = Math.sin(waveAngle) * 18;
@@ -63,13 +63,13 @@ function drawTimeSkyStrokes(g, world, timeValues, opacity) {
 function drawTimeStarHighlights(g, world, timeValues, opacity) {
     const stars = world.stars;
     const brightness = timeValues.starBrightness;
-    // Increase only the intensity of the starlight brush strokes; do not brighten the entire image.
-    // The original primary stars and the moon must remain unchanged, and the hover-effect (triggered when the mouse is positioned over an element) remains the responsibility of the respective team member.
+    // Apply brightness to the extra star highlights.
+    // The main stars and moon stay visible. Hover lighting is handled separately.
     for (let i = 0; i < stars.length; i++) {
         let star = stars[i];
         if (star.type === 'small') continue;
         for (let mark = 0; mark < 18; mark++) {
-            // Scattered within the existing starlight, at varying distances and in different directions—not forming concentric circles.
+            // Scatter the highlights at different distances and angles within each glow.
             let angle = mark * 2.4 + i * 0.7;
             let radiusVariation = (Math.sin(mark * 4.7 + i) + 1) / 2;
             let radius = star.radius * (0.25 + radiusVariation * 0.95);
@@ -85,16 +85,16 @@ function drawTimeStarHighlights(g, world, timeValues, opacity) {
 }
 
 function drawTimeOriginalStars(g, world, timeValues) {
-    // Redraw the strokes of the existing small stars; do not generate an additional set of stars.
+    // Draw the original small stars from their saved brushstrokes.
     let starNumber = 0;
     for (const star of world.stars) {
         if (star.type !== 'small' || !star.timeStrokes) continue;
-        // For example, 2.5: the first two are fully visible, while the third is half-visible.
+        // A value of 2.5 draws two full stars and a third at half opacity.
         let visibility = Math.max(0, Math.min(1, timeValues.visibleStars - starNumber));
         starNumber++;
         if (visibility <= 0) continue;
         for (const mark of star.timeStrokes) {
-            // The cypress tree remains in front of the starlight; do not add the brushstrokes obscured by the tree onto the tree itself.
+            // Skip strokes with centres inside the cypress.
             if (world.cypress && pointInCypress(mark.x, mark.y, world.cypress)) continue;
             paintV2Stroke(g, mark.x, mark.y, mark.angle, mark.len, mark.weight,
                 mark.colour, mark.alpha * visibility);

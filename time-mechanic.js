@@ -1,7 +1,8 @@
 // Time-based mechanic — Yang Wu.
-// 这个文件只算时间和数值，不生成世界，也不控制滚轮。
+// ChatGPT/Codex helped Yang Wu with the elapsed-time clock and keyframe interpolation.
+// Calculate the Time cycle and the values it passes to the painting.
 
-// 整幅画的速度曲线。时间单位为秒，速度沿用现有画面的参数。
+// Timing is in seconds. Speed uses the renderer's flow parameter.
 const paintingTimeSettings = {
     cycleSeconds: 34,
     startSpeed: 1.8,
@@ -15,7 +16,7 @@ const paintingTimeSettings = {
     starLeaveFade: 0.6
 };
 
-// 每行：[秒数，流速，融合量，起步位移]。
+// Each row contains seconds, flow speed, blending amount and restart offset.
 const timeKeyframes = [
     [0, 1.8, 0, 0],
     [8, 1.8, 0, 0],
@@ -54,29 +55,29 @@ class TimeMechanic {
     }
 
     reset() {
-        // 所有效果共用 paintingTime，暂停和换世界时一起处理。
+        // All Time effects share one clock for pause and world changes.
         this.starBrightness = 0.2;
-        this.visibleStars = 2; // 原有小星的显现数量；主星和月亮始终保留。
-        this.strokeGap = 36;  // 补充天空笔触的间距；越小，笔触越密。
+        this.visibleStars = 2; // Number of visible small stars.
+        this.strokeGap = 36;  // Smaller gaps make the extra sky strokes denser.
         this.paintingTime = 0;
         this.hasLooped = false;
         this.paintSpeed = paintingTimeSettings.startSpeed;
-        this.paintBlend = 0; // 0：单个运动位置；1：混合一个周期内的运动位置。
+        this.paintBlend = 0; // 0 samples one position. 1 blends a full motion cycle.
         this.paintRestartOffset = 0;
-        // 每次重新进入世界时生成时间表，绘制期间不重新随机。
+        // Choose the star timings on reset and reuse them while drawing.
         this.starAppearTimes = this.makeStarTimes(paintingTimeSettings.starAppearInterval);
         this.starLeaveTimes = this.makeStarTimes(paintingTimeSettings.starLeaveInterval);
     }
 
     update(elapsedMilliseconds) {
-        // elapsedMilliseconds 是这次经过的时间，由小组现有画面提供。
-        // 忽略无效时间，避免破坏循环。
+        // The main draw loop supplies the elapsed milliseconds.
+        // Ignore invalid values to keep the cycle running correctly.
         if (!Number.isFinite(elapsedMilliseconds)) return;
         if (elapsedMilliseconds <= 0) return;
         const settings = paintingTimeSettings;
         const cycleSeconds = settings.cycleSeconds;
         if (this.paintingTime + elapsedMilliseconds / 1000 >= cycleSeconds) this.hasLooped = true;
-        // 余数让循环重新开始，同时保留这一帧多出来的时间。
+        // Wrap at the end of the cycle and carry any extra time into the next one.
         this.paintingTime = (this.paintingTime + elapsedMilliseconds / 1000) % cycleSeconds;
         this.updatePaintingLoop();
         this.updateAtmosphere();
@@ -89,14 +90,14 @@ class TimeMechanic {
     }
 
     curveValue(seconds, column) {
-        // 用数组、循环和 lerp()，将相邻时间点连成柔和曲线。
+        // Use lerp() to join adjacent keyframes into a smooth curve.
         for (let i = 0; i < timeKeyframes.length - 1; i++) {
             const a = timeKeyframes[i];
             const b = timeKeyframes[i + 1];
             if (seconds > b[0]) continue;
             const duration = b[0] - a[0];
             const progress = (seconds - a[0]) / duration;
-            // 中间两个控制值沿用相邻点的变化方向，避免连接处突然换挡。
+            // Two control values use neighbouring slopes to smooth the joins.
             const values = [a[column],
                 a[column] + this.changeRate(i, column) * duration / 3,
                 b[column] - this.changeRate(i + 1, column) * duration / 3,
@@ -112,7 +113,7 @@ class TimeMechanic {
     }
 
     changeRate(index, column) {
-        // 首尾和峰顶收平；其他点取两边较缓的变化率。
+        // Flatten the endpoints and peak. Elsewhere, use the gentler slope.
         if (index === 0 || index === timeKeyframes.length - 1) return 0;
         const before = timeKeyframes[index - 1];
         const here = timeKeyframes[index];
@@ -129,12 +130,12 @@ class TimeMechanic {
         const progress = this.paintingTime / settings.cycleSeconds;
         const peak = settings.peakTime / settings.cycleSeconds;
         const restart = settings.restartTime / settings.cycleSeconds;
-        // 星星和笔触仍在整段上升过程中渐增，不集中到高速时才出现。
+        // Starlight and stroke density build throughout the rise.
         let intensity;
         if (progress < peak) {
             intensity = this.smoothProgress(progress / peak);
         } else if (progress < restart) {
-            // 星光和密度随曲线回落，直到静止后的起步点。
+            // Starlight and stroke density fall as the paint settles.
             intensity = this.smoothProgress((1 - progress) / (1 - peak));
         } else {
             const startingIntensity = this.smoothProgress((1 - restart) / (1 - peak));
@@ -147,13 +148,13 @@ class TimeMechanic {
 
     updateStarCount() {
         const s = paintingTimeSettings;
-        // 额外十颗小星逐颗淡入，最后一颗在加速末段仍然出现。
+        // Ten additional small stars fade in one at a time as the sky speeds up.
         const appeared = this.countStarChanges(this.paintingTime - s.starAppearStart,
             this.starAppearTimes, s.starAppearFade);
         const lastAppear = s.starAppearStart + 9 * s.starAppearInterval + s.starAppearFade;
         const leaveStart = lastAppear + s.starLeaveDelay;
         let leavingTime = this.paintingTime - leaveStart;
-        // 循环换轮不清空星星；上一轮的退场继续到新一轮开头。
+        // Let the small stars keep fading out across the loop boundary.
         if (leavingTime < 0 && this.hasLooped) leavingTime += s.cycleSeconds;
         if ((leavingTime >= 0 && this.paintingTime < s.starAppearStart) || this.paintingTime >= leaveStart) {
             this.visibleStars = 12 - this.countStarChanges(leavingTime,
@@ -164,7 +165,7 @@ class TimeMechanic {
     makeStarTimes(interval) {
         const times = [];
         for (let i = 0; i < 10; i++) {
-            // 使用独立随机数，避免改变原画的 randomSeed() 绘画顺序。
+            // Math.random() keeps the star timings separate from p5's seeded paint sequence.
             let jitter = 0;
             if (i > 0 && i < 9) jitter = (Math.random() - 0.5) * interval * 0.8;
             times.push(i * interval + jitter);
@@ -183,7 +184,7 @@ class TimeMechanic {
     }
 
     smoothProgress(progress) {
-        // cos 从 1 变到 -1，换算成首尾柔和的 0–1 进度。
+        // Map cosine to a 0–1 fade with a gentle start and finish.
         return (1 - Math.cos(progress * Math.PI)) / 2;
     }
 
