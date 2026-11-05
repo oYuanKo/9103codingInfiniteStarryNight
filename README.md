@@ -116,12 +116,42 @@ This README was initially generated with AI assistance and is to be reviewed and
 
 [ChatGPT](https://chatgpt.com/overview/) and [Codex](https://openai.com/codex/) from OpenAI were used to help with difficult features and improve code quality, as recorded in the project's earlier README. AI also assisted in consolidating this README from the repository documentation and current code.
 
-- **Yuan Kuang:** I used OpenAI’s ChatGPT and its coding tools to generate and revise parts of my contribution to this project. This included the painted landscape and brush rendering, cursor-driven interaction and zoom, nested-world navigation, close-up brush detail, and star-hover effects. AI also assisted with later integration work, including the Time controls, audio-reactive effects, debugging, code review, testing, and editing this README. The AI-generated code uses seeded randomness and noise to create repeatable variations between worlds. A shader animates the painted image by changing its sampling positions. Camera coordinate conversion and parent–child world links support zooming and navigation between worlds. For the audio-reactive effects, a Web Audio AnalyserNode reads frequency data from the background music; the smoothed frequency bands are then mapped to village lighting and cypress movement and brightness. I developed the creative concept and direction for my contribution, including the idea of a recursive universe in which users can zoom into a star and discover another version of the artwork. I decided how I wanted the artwork to look, feel, and respond to interaction, and guided its development through multiple iterations. When I encountered visual or technical problems, I described them to AI and asked for possible approaches. I compared the suggested options and made the final decisions about which direction to take. I also tested successive versions and gave specific feedback on issues such as ripple-like movement, blurred brushstrokes during zoom, and transitions between worlds. Based on these observations, I directed further revisions until the result matched my intended experience. Some commit messages were automatically generated using GitHub Copilot.
+### Yuan Kuang
 
-- **Qingyang Fang:** **[TO BE COMPLETED BY QINGYANG FANG]**
+#### AI tools and scope
 
-- **Yang Wu:** the existing acknowledgement states that ChatGPT/Codex assisted with the Time implementation, shared pause and vortex fix. The Time code uses an elapsed-time clock, keyframe interpolation and saved paint layers. The shared pause stores playing sounds and remaining timer durations so they resume from the same place. The vortex repair adjusts existing brush geometry to fill the centre gap. 
+I used OpenAI's ChatGPT and its coding tools extensively to generate and revise substantial parts of my contribution to this project. This included the painted landscape and brush rendering, cursor-driven interaction and zoom, nested-world navigation, close-up brush detail, and star-hover effects. AI also assisted with later integration work, including the Time controls, audio-reactive effects, debugging, code review, testing, and editing this README.
 
+Some commit messages were automatically generated using GitHub Copilot.
+
+#### How the AI-generated code works
+
+The AI-generated code uses seeded randomness and noise to create repeatable variations between worlds. A shader animates the painted image by changing its sampling positions. Camera coordinate conversion and parent-child world links support zooming and navigation between worlds.
+
+For the audio-reactive effects, a Web Audio AnalyserNode reads frequency data from the background music. The smoothed frequency bands are then mapped to village lighting and cypress movement and brightness.
+
+#### My creative direction and decisions
+
+I developed the creative concept and direction for my contribution, including the idea of a recursive universe in which users can zoom into a star and discover another version of the artwork. I decided how I wanted the artwork to look, feel, and respond to interaction, and guided its development through multiple iterations.
+
+When I encountered visual or technical problems, I described them to AI and asked for possible approaches. I compared the suggested options and made the final decisions about which direction to take. I also tested successive versions and gave specific feedback on issues such as ripple-like movement, blurred brushstrokes during zoom, and transitions between worlds. Based on these observations, I directed further revisions until the result matched my intended experience.
+
+#### Code-review skills
+
+I also used the two code-structure skills listed in References to support reviewing my teammates' code during integration:
+
+- [Reviewing Code Modularity](https://github.com/tyshkovskii/reviewing-code-modularity-skill/blob/main/SKILL.md) (`reviewing-code-modularity-skill`): guidance for reviewing module responsibilities, coupling and public APIs.
+- [Component Review](https://github.com/lx-wnk/skills/blob/main/skills/component-review/SKILL.md) (`component-review`): guidance for reviewing component, class and method design, including cohesion and interfaces.
+
+These skills provided instructions for AI-assisted review; they were not independent verification that the code was correct. I remained responsible for deciding which suggestions to adopt.
+
+This statement describes AI use in my own contribution and my later changes to shared files. Other team members' AI use is acknowledged separately.
+
+### Qingyang Fang
+
+### Yang Wu
+
+the existing acknowledgement states that ChatGPT/Codex assisted with the Time implementation, shared pause and vortex fix. The Time code uses an elapsed-time clock, keyframe interpolation and saved paint layers. The shared pause stores playing sounds and remaining timer durations so they resume from the same place. The vortex repair adjusts existing brush geometry to fill the centre gap.
 
 
 ## References and asset credits
