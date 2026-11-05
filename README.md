@@ -18,12 +18,13 @@ The painting starts with normal flow and Time off. Select **Start Time** to watc
 
 | Control | What it does |
 |---|---|
-| Move the mouse over the painting | Disturbs nearby paint flow. Faster movement also increases the music's playback rate. |
+| Move the mouse over the painting | Disturbs nearby paint flow. When Time is off, faster movement also increases the music's playback rate. When Time is on, only the Time cycle controls music speed. |
 | Hover over a major star or the moon | Gradually spreads extra light made from brushstrokes. The music grows louder with the light. Small stars are not portals or hover-light targets. |
 | Scroll inward | Zooms towards the pointer. At the normal zoom limit, keep the pointer over a major star or the moon and continue scrolling to enter its world. |
 | Scroll outward | Zooms out. At the minimum zoom, keep scrolling to move into the parent world. An outer world can also be generated from the starting world. |
 | Reverse scrolling during a portal transition | Reverses the transition. Scrolling back to its starting boundary cancels it. |
 | Click the painting | Starts or unlocks audio if the browser has blocked autoplay. |
+| **Start Time / Stop Time** | Start Time begins a fresh 34-second cycle of changing paint flow, starlight, sky density and music speed. While enabled, Time alone controls music speed. Stop Time returns to normal flow and mouse-controlled music speed. F pauses or resumes the running cycle together with the painting and music. Zooming and world navigation remain available. |
 | **Start Time / Stop Time** | Start Time begins a fresh 34-second cycle of changing paint flow, starlight and sky density. Stop Time returns to normal flow. F pauses or resumes the running cycle together with the painting and music. |
 | **F** | Pauses or resumes paint flow, the Time cycle and music, including transition sounds. Navigation controls remain available. |
 | **C** | Toggles cursor disturbance and star-hover light. Developer only, not shown in guidance for user |
@@ -60,13 +61,23 @@ The painting is drawn into an offscreen buffer and reused. A direction texture s
 
 New worlds are generated in small steps across frames and cached for reuse. When zoomed in, `brush_detail_v2.js` replays recorded brush geometry into local high-resolution textures, then adds two levels of smaller brush marks. This preserves painted detail better than enlarging the base image alone. `star_hover_light_v2.js` adds temporary light strokes that grow during a hover and fade after the pointer leaves, without changing the world's seed.
 
-The title describes the feeling of continuing into connected worlds. Detail has finite levels. Drawing resources are bounded to eight world slots including generation; navigation links remain available, and evicted paintings are regenerated when revisited.
+The title describes the feeling of continuing into connected worlds. Detail has finite levels. Drawing resources are bounded to eight world slots including generation; navigation links and seeds remain available, and evicted paintings are regenerated with the same composition when revisited. This bounds drawing resources rather than the size of the navigation graph; rebuilding can add generation time on a return visit.
 
 ### 3. Audio-based interactions
 
-**[TO BE COMPLETED BY QINGYANG FANG]**
+**[TO BE COMPLETED BY QINGYANG FANG: review and expand this implementation summary, personal contribution, references and asset credits.]**
+
+`audio_module.js` manages the three background tracks, transition sound, playback rate and shared pause. Music follows world depth: starting with track 1, inward navigation selects **1 → 2 → 3 → 1 → 2 → 3**, and returning selects the track associated with that depth. R restarts the initial world and the first track. Hovering over a major star or the moon still changes volume.
+
+When Time is off, mouse speed controls music speed. When Time is on, the existing Time state alone controls playback rate through its approximately 34-second cycle; mouse speed is not added to that rate. The music continues from its current playback position when Start Time is selected. F pauses and resumes the painting, Time, music and transition sounds together, while navigation remains available.
+
+`audio_reactivity.js` uses a Web Audio AnalyserNode with a 2048-point FFT to read the background music's frequency content. Low frequencies (60–250 Hz) gently brighten parts of the village; middle frequencies (300–2400 Hz) bend the upper cypress while its base stays anchored; high frequencies (3500–10000 Hz) increase the cypress's brightness. Responses are smoothed and bounded to retain the painting's forms. The transition sound does not feed this analysis, and no microphone is used.
+
+Run the page through **localhost or HTTPS** for FFT-driven painting. Opening `index.html` directly with `file://` uses the existing direct-audio fallback without FFT response. A click may be needed to unlock sound under the browser's autoplay policy.
 
 ### 4. Time: changing the painting's rhythm
+
+Before Time starts, the background keeps its initial normal flow and mouse speed controls music speed. Once Time starts, only Time controls music speed. This avoids mouse movement and Time competing to set the same playback rate. Stopping Time restores mouse-controlled music speed. Zooming, entering worlds and returning remain available in both modes.
 
 The Time mechanic repeats over **34 seconds**. It begins gently, gradually accelerates, reaches a short rounded peak near 30 seconds, then settles to rest as the paint blending becomes strongest. The same painting starts moving again slowly. Its clarity and sky highlights return with the restarting movement rather than through a separate fade timer.
 
@@ -95,12 +106,10 @@ There is one p5 application, with one `setup()` and `draw()` entry point in `ske
 | `zoom_camera.js`, `nested_universe_v2.js` | Camera, world generation, navigation and cache |
 | `star_hover_light_v2.js` | Interactive light around major stars and the moon |
 | `group_bridge.js` | Shared state and frame, portal and world-change events |
-| `audio_module.js`, `assets/` | Music, transition sound and audio processing |
+| `audio_module.js`, `assets/` | Music, transition sound, playback rate and audio processing |
+| `audio_reactivity.js` | FFT analysis and frequency-driven village light, cypress bending and brightness |
 | `time-mechanic.js`, `time-atmosphere.js`, `time-integration.js` | Time calculations, Time paint layers and integration |
 
-For group development, keep separate features in their own files where possible, sync with `main` before starting work, and use a feature branch and pull request. Coordinate changes to shared files rather than replacing another member's implementation. Do not create another global p5 `draw()` function. Bridge subscriptions return cleanup functions, and `onFrame` receives elapsed milliseconds and a state snapshot after drawing.
-
-See [GROUP_INTEGRATION.md](GROUP_INTEGRATION.md) for the shared bridge API.
 
 ## AI acknowledgement
 
