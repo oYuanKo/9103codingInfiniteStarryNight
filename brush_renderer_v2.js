@@ -2,13 +2,7 @@
 const BRUSH_V2_SETTINGS = {
     spacing: 8,
     detailCount: 3500,
-    movingCount: 650,
     noiseScale: 0.005,
-
-    // Motion
-    driftAmountX: 16,
-    driftAmountY: 12,
-    motionAlpha: 165,
 
     // Star composition
     majorStarCount: 5,
@@ -150,12 +144,9 @@ function generateBrushV2Stars(seed = universeSeed, variedStars = false) {
 
 const brushV2 = {
     base: null,
-    motion: null,
-    marks: [],
     stars: [],
     village: null,
     cypress: null,
-    time: 0
 };
 
 // Shared direction field
@@ -286,20 +277,15 @@ function* buildBrushV2Steps(seed, preservePrevious = false, variedStars = false)
     if (!preservePrevious) {
         disposeBrushDetailsV2(brushV2.detailSource);
         if (brushV2.base) brushV2.base.remove();
-        if (brushV2.motion) brushV2.motion.remove();
     }
 
     brushV2.base = createGraphics(width, height);
-    brushV2.motion = createGraphics(width, height);
 
     brushV2.base.pixelDensity(1);
-    brushV2.motion.pixelDensity(1);
 
     brushV2.base.background(12, 28, 60);
     brushV2.detailSource = newBrushDetailSourceV2(seed);
 
-    brushV2.time = 0;
-    brushV2.marks = [];
     brushV2.stars = [];
     brushV2.village = null;
     brushV2.cypress = null;
@@ -369,25 +355,8 @@ function* buildBrushV2Steps(seed, preservePrevious = false, variedStars = false)
     paintBrushCypress(brushV2.base);
 
 
-    // Living brush marks keep stable home positions
-    for (let i = 0; i < BRUSH_V2_SETTINGS.movingCount; i++) {
-        const x = random(width);
-        const y = random(height);
-
-        brushV2.marks.push({
-            homeX: x,
-            homeY: y,
-            x: x,
-            y: y,
-            length: random(12, 24),
-            weight: random(1.4, 3.4),
-            colour: brushV2Color(x, y),
-            phase: random(1000),
-            speedPhase: random(1000)
-        });
-
-        yield;
-    }
+    // Seeded layout contract: keep the random stream aligned for subsequent work.
+    for (let i = 0; i < 4550; i++) random();
 
     for (let y = 4; y < height * 0.6; y++) {
         fillBrushSkyGapRow(brushV2.base, y);
@@ -424,76 +393,11 @@ function fillBrushSkyGapRow(g, y) {
     }
 }
 
+// Generate the initial painting synchronously; nested worlds use the same steps incrementally.
 function initBrushV2(seed, preservePrevious = false) {
-    const steps = buildBrushV2Steps(
-        seed,
-        preservePrevious
-    );
-
-    // Preserve the existing synchronous behaviour
-    for (const _ of steps) {
-        // Consume all generation steps
+    for (const _ of buildBrushV2Steps(seed, preservePrevious)) {
+        // Consume all generation steps.
     }
-}
-
-// Render the layered painting
-function drawBrushV2() {
-    if (!brushV2.base) return;
-
-    // Cached dense painting
-    image(brushV2.base, 0, 0);
-
-    const layer = brushV2.motion;
-    layer.clear();
-
-    brushV2.time += min(deltaTime, 33) * 0.00018;
-
-
-    for (const mark of brushV2.marks) {
-
-        // Each stroke moves independently
-        // along a short section of the flow field
-        const progress =
-            (brushV2.time * 0.7 + mark.speedPhase) % 1;
-
-        // Get the local flow direction
-        const baseAngle = brushV2Angle(
-            mark.homeX,
-            mark.homeY,
-            0
-        );
-
-        // Small movement along the flow direction
-        const travel = (progress - 0.5) * 32;
-
-        const px =
-            mark.homeX + cos(baseAngle) * travel;
-
-        const py =
-            mark.homeY + sin(baseAngle) * travel;
-
-        // Align the brushstroke with its local field
-        const angle = brushV2Angle(px, py, 0);
-
-        // Fade in and out to avoid visible jumps
-        const opacity =
-            145 * pow(sin(PI * progress), 2);
-
-        // Draw ONE short stroke, not a chain
-        paintV2Stroke(
-            layer,
-            px,
-            py,
-            angle,
-            mark.length,
-            mark.weight,
-            mark.colour,
-            opacity
-        );
-    }
-
-
-    image(layer, 0, 0);
 }
 
 function paintStarGlowField(g, star) {

@@ -60,7 +60,7 @@ The painting is drawn into an offscreen buffer and reused. A direction texture s
 
 New worlds are generated in small steps across frames and cached for reuse. When zoomed in, `brush_detail_v2.js` replays recorded brush geometry into local high-resolution textures, then adds two levels of smaller brush marks. This preserves painted detail better than enlarging the base image alone. `star_hover_light_v2.js` adds temporary light strokes that grow during a hover and fade after the pointer leaves, without changing the world's seed.
 
-The title describes the feeling of continuing into connected worlds. Detail has finite levels, and cached ancestors can use more memory as exploration goes deeper.
+The title describes the feeling of continuing into connected worlds. Detail has finite levels. Drawing resources are bounded to eight world slots including generation; navigation links remain available, and evicted paintings are regenerated when revisited.
 
 ### 3. Audio-based interactions
 
@@ -100,7 +100,7 @@ There is one p5 application, with one `setup()` and `draw()` entry point in `ske
 
 For group development, keep separate features in their own files where possible, sync with `main` before starting work, and use a feature branch and pull request. Coordinate changes to shared files rather than replacing another member's implementation. Do not create another global p5 `draw()` function. Bridge subscriptions return cleanup functions, and `onFrame` receives elapsed milliseconds and a state snapshot after drawing.
 
-See [GROUP_INTEGRATION.md](GROUP_INTEGRATION.md) for the bridge API and existing browser-test instructions. [DEVELOPMENT_HISTORY.md](docs/DEVELOPMENT_HISTORY.md) records the earlier core iterations. [PRODUCTION_RELEASE.md](docs/PRODUCTION_RELEASE.md), [legacy/](legacy/README.md) and the [cosmic experiments](experiments/cosmic_threshold/README.md) describe older releases or archived approaches, not additional modes in the current application. In particular, older notes saying Audio or Time is still pending predate their integration.
+See [GROUP_INTEGRATION.md](GROUP_INTEGRATION.md) for the shared bridge API.
 
 ## AI acknowledgement
 
@@ -146,4 +146,4 @@ https://github.com/lx-wnk/skills/blob/main/skills/component-review/SKILL.md
 
 For each asset, add its title, creator, original source link, licence or permission, and any editing performed. If it is original or AI-generated, state who made it and how. The credits for an older, removed transition cue should not be applied to these current files.
 
-For repeatable development tests, call `restartPaintingV2(seed)` explicitly (for example 12, 89 or 205). Q/W/E are no longer user controls. `StarryNight.onReset(callback)` reports a full restart after the new world is ready; stale portal events are discarded.
+For repeatable seeded development, call `restartPaintingV2(seed)` explicitly (for example 12, 89 or 205). Q/W/E are no longer user controls. `StarryNight.onReset(callback)` reports a full restart after the new world is ready; stale portal events are discarded.
