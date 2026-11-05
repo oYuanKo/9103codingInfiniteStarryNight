@@ -1,3 +1,4 @@
+const outputDir = require('./test-output.cjs')(__filename);
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),http=require('node:http');
 const {chromium}=require('playwright');
 const root=path.resolve(__dirname,'..');
@@ -30,7 +31,7 @@ const root=path.resolve(__dirname,'..');
   return {parentExact,childExact,reversible,outsideSame,changed};
  });
  console.log('Portal pixel checks:',endpoint);for(const name of ['parentExact','childExact','reversible'])assert.equal(endpoint[name],true,name);assert(endpoint.changed>0); // Colour and structure already evolve in early depth.
- for(const p of [0,.2,.45,.7,.9,1]){await page.evaluate(p=>renderAt(p),p);await page.locator('canvas').first().screenshot({path:path.join(root,'tests',`step6d-${Math.round(p*100)}.png`)});}
+ for(const p of [0,.2,.45,.7,.9,1]){await page.evaluate(p=>renderAt(p),p);await page.locator('canvas').first().screenshot({path:path.join(outputDir,`step6d-${Math.round(p*100)}.png`)});}
  // Geometry replay / sharpness checks now live in detail.browser.cjs.
  const cursor=await page.evaluate(()=>{
   renderAt(.5);brushCursor.x=650;brushCursor.y=150;brushCursor.vx=9;brushCursor.vy=5;brushCursor.active=1;brushCursor.speed=1;

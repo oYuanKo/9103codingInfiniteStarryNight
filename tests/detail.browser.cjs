@@ -1,3 +1,4 @@
+const outputDir = require('./test-output.cjs')(__filename);
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),http=require('node:http');
 const {chromium}=require('playwright');const root=path.resolve(__dirname,'..');
 (async()=>{
@@ -31,10 +32,10 @@ const {chromium}=require('playwright');const root=path.resolve(__dirname,'..');
    return {zoom,lowError:errorPixels(low,reference),detailError:errorPixels(high,reference),patches:brushDetailV2.patches.length,stats:{...brushDetailV2.stats}};
   },zoom);
   console.log('Sharpness against direct geometry reference:',result);assert(result.detailError<result.lowError*.55);
-  await page.locator('canvas').first().screenshot({path:path.join(root,'tests',`step6d1-sharp-${zoom}.png`)});
-  await page.evaluate(()=>image(referenceCanvas,0,0));await page.locator('canvas').first().screenshot({path:path.join(root,'tests',`step6d1-reference-${zoom}.png`)});await page.evaluate(()=>referenceCanvas.remove());
+  await page.locator('canvas').first().screenshot({path:path.join(outputDir,`step6d1-sharp-${zoom}.png`)});
+  await page.evaluate(()=>image(referenceCanvas,0,0));await page.locator('canvas').first().screenshot({path:path.join(outputDir,`step6d1-reference-${zoom}.png`)});await page.evaluate(()=>referenceCanvas.remove());
   await page.evaluate(()=>{brushDetailSettings.enabled=false;drawBrushFlowShader(true,testCamera);brushDetailSettings.enabled=true});
-  await page.locator('canvas').first().screenshot({path:path.join(root,'tests',`step6d1-cache-${zoom}.png`)});
+  await page.locator('canvas').first().screenshot({path:path.join(outputDir,`step6d1-cache-${zoom}.png`)});
  }
  await page.evaluate(()=>{
   const star=brushV2.stars[0];Object.assign(v2Camera,stillCameraV2(3,-1328,-204));requestPortalV2(childEdgeV2(star),'in',-500);
@@ -43,7 +44,7 @@ const {chromium}=require('playwright');const root=path.resolve(__dirname,'..');
  });
  for(const p of [0,.25,.4,.5,.6,.7,.85,1]){
   await page.evaluate(async p=>{await settleDetail(()=>renderAt(p))},p);
-  await page.locator('canvas').first().screenshot({path:path.join(root,'tests',`step6d1-transition-${Math.round(p*100)}.png`)});
+  await page.locator('canvas').first().screenshot({path:path.join(outputDir,`step6d1-transition-${Math.round(p*100)}.png`)});
  }
  const transition=await page.evaluate(async()=>{
   await settleDetail(()=>renderAt(.25));const early=screenPixels();drawBrushFlowShader(true,getStarEntryCameraV2());const earlyParent=equalPixels(early,screenPixels());
@@ -59,7 +60,7 @@ const {chromium}=require('playwright');const root=path.resolve(__dirname,'..');
   for(let i=0;i<70;i++){const start=performance.now();renderAt(.65);brushFlowBuffer.loadPixels();ms.push(performance.now()-start);await new Promise(requestAnimationFrame)}
   ms.sort((a,b)=>a-b);return {median:ms[35],p95:ms[66],max:ms[69]};
  });console.log('Moving two-world transition including GPU readback (ms):',moving);
- await page.locator('canvas').first().screenshot({path:path.join(root,'tests','step6d1-flow-transition.png')});
+ await page.locator('canvas').first().screenshot({path:path.join(outputDir,'step6d1-flow-transition.png')});
  await page.evaluate(()=>{brushFlowSettings.enabled=false;brushFlowSettings.paused=true;brushFlowSettings.cursorEnabled=false});
  const stability=await page.evaluate(async()=>{
   await settleDetail(()=>renderAt(.6));const before=screenPixels(),builds=brushDetailV2.stats.builds;

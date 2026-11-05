@@ -1,3 +1,4 @@
+const outputDir = require('./test-output.cjs')(__filename);
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),http=require('node:http');
 const {chromium}=require('playwright');const root=path.resolve(__dirname,'..');
 (async()=>{
@@ -26,9 +27,9 @@ const {chromium}=require('playwright');const root=path.resolve(__dirname,'..');
    window.microBefore=before;window.microAfter=after;
    return {zoom,change,reversible,noBuild:builds===brushDetailV2.stats.builds};
   },zoom);results.push(result);assert(result.change>0);assert(result.reversible&&result.noBuild);
-  await page.locator('canvas').first().screenshot({path:path.join(root,'tests',`step6d2-micro-${zoom}.png`)});
+  await page.locator('canvas').first().screenshot({path:path.join(outputDir,`step6d2-micro-${zoom}.png`)});
   await page.evaluate(()=>{brushDetailSettings.microEnabled=false;drawBrushFlowShader(true,testCamera);brushDetailSettings.microEnabled=true});
-  await page.locator('canvas').first().screenshot({path:path.join(root,'tests',`step6d2-replay-${zoom}.png`)});
+  await page.locator('canvas').first().screenshot({path:path.join(outputDir,`step6d2-replay-${zoom}.png`)});
  }
  console.log('Hierarchical geometric detail:',results);
  const deterministic=await page.evaluate(async()=>{
@@ -53,7 +54,7 @@ const {chromium}=require('playwright');const root=path.resolve(__dirname,'..');
  });
  for(const p of [0,.2,.4,.6,.8,1]){
   await page.evaluate(async p=>{await settleDetail(()=>renderAt(p))},p);
-  await page.locator('canvas').first().screenshot({path:path.join(root,'tests',`step6d2-transition-${Math.round(p*100)}.png`)});
+  await page.locator('canvas').first().screenshot({path:path.join(outputDir,`step6d2-transition-${Math.round(p*100)}.png`)});
  }
  const transition=await page.evaluate(async()=>{
   await settleDetail(()=>renderAt(.25));const early=screenPixels();drawBrushFlowShader(true,getStarEntryCameraV2());const earlyParent=equalPixels(early,screenPixels());
@@ -69,7 +70,7 @@ const {chromium}=require('playwright');const root=path.resolve(__dirname,'..');
   for(let i=0;i<70;i++){const start=performance.now();renderAt(.65);brushFlowBuffer.loadPixels();ms.push(performance.now()-start);await new Promise(requestAnimationFrame)}
   ms.sort((a,b)=>a-b);return {median:ms[35],p95:ms[66],max:ms[69]};
  });console.log('Moving two-world transition including GPU readback (ms):',moving);
- await page.locator('canvas').first().screenshot({path:path.join(root,'tests','step6d2-flow-transition.png')});
+ await page.locator('canvas').first().screenshot({path:path.join(outputDir,'step6d2-flow-transition.png')});
  await page.evaluate(()=>{brushFlowSettings.enabled=false;brushFlowSettings.paused=true;brushFlowSettings.cursorEnabled=false});
  const stability=await page.evaluate(async()=>{
   await settleDetail(()=>renderAt(.6));const before=screenPixels(),builds=brushDetailV2.stats.builds;

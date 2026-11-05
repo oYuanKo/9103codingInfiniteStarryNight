@@ -1,3 +1,4 @@
+const outputDir = require('./test-output.cjs')(__filename);
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),http=require('node:http');
 const {chromium}=require('playwright');const root=path.resolve(__dirname,'..');
 (async()=>{
@@ -29,7 +30,7 @@ const {chromium}=require('playwright');const root=path.resolve(__dirname,'..');
    const rows=[];for(let n=0;n<=100;n++){const p=n/100;renderAt(p);const parent=getStarEntryCameraV2(),child=getPortalRenderV2();rows.push({p,parent:parent.zoom,child:child.childCamera.zoom,anchorError:Math.hypot(child.childCamera.x+(child.anchorX-nestedV2.transition.childCamera.x)/nestedV2.transition.childCamera.zoom*child.childCamera.zoom-child.anchorX,child.childCamera.y+(child.anchorY-nestedV2.transition.childCamera.y)/nestedV2.transition.childCamera.zoom*child.childCamera.zoom-child.anchorY)})}return rows;
   });assert(scales.every((r,i)=>r.anchorError<1e-9&&(!i||(r.parent>scales[i-1].parent&&r.child>scales[i-1].child))));console.log('Monotonic screen scales and fixed anchor',id,scales.filter((r,i)=>i%20===0));
   for(const p of [.2,.4,.5,.6,.7,.8,.9]){
-   await page.evaluate(p=>settle(p),p);await page.locator('canvas').first().screenshot({path:path.join(root,'tests',`step6d3-star-${index}-${Math.round(p*100)}.png`)});
+   await page.evaluate(p=>settle(p),p);await page.locator('canvas').first().screenshot({path:path.join(outputDir,`step6d3-star-${index}-${Math.round(p*100)}.png`)});
   }
   const reverse=await page.evaluate(async()=>{
    const results=[];for(const p of [.3,.5,.7]){await settle(p);const first=pixels();for(let i=0;i<80;i++)updateStarEntryV2(16.67);drawStarEntryV2();const stopped=same(first,pixels());const update=updateBrushDetailsV2;updateBrushDetailsV2=()=>{};renderAt(p-.02);renderAt(p);updateBrushDetailsV2=update;results.push({p,stopped,reversed:same(first,pixels())})}return results;
@@ -55,13 +56,13 @@ const {chromium}=require('playwright');const root=path.resolve(__dirname,'..');
   for(const direction of [1,-1])for(let n=0;n<=150;n++){renderAt(direction===1?n/150:1-n/150);await new Promise(r=>setTimeout(r,33))}
   recorder.stop();await done;stream.getTracks().forEach(t=>t.stop());
   const bytes=new Uint8Array(await new Blob(chunks).arrayBuffer());let binary='';for(let i=0;i<bytes.length;i+=16384)binary+=String.fromCharCode(...bytes.subarray(i,i+16384));return btoa(binary);
- });fs.writeFileSync(path.join(root,'tests','step6d3-depth-roundtrip.webm'),Buffer.from(video,'base64'));
+ });fs.writeFileSync(path.join(outputDir,'step6d3-depth-roundtrip.webm'),Buffer.from(video,'base64'));
  await page.evaluate(()=>{renderAt(0);finishPortalV2(false);brushFlowSettings.paused=true;loop()});
  const box=await page.locator('canvas').first().boundingBox();
  for(const target of [.3,.5,.7]){
   await page.evaluate(id=>startStar(id),ids[0]);
   await page.evaluate(()=>{nestedV2.transition.progress=nestedV2.transition.targetProgress=.01;loop()});
-  await page.mouse.move(box.x+400,box.y+300);
+  await page.mouse.move(box.x+(400)*box.width/800,box.y+(300)*box.height/600);
   const delta=await page.evaluate(p=>-(p-.01)*nestedV2.transition.range/v2Camera.sensitivity,target);
   await page.mouse.wheel(0,delta);await page.waitForTimeout(900);
   const a=await page.evaluate(()=>nestedV2.transition.progress);await page.waitForTimeout(300);const b=await page.evaluate(()=>nestedV2.transition.progress);
@@ -78,8 +79,8 @@ const {chromium}=require('playwright');const root=path.resolve(__dirname,'..');
   wheelRecorder.ondataavailable=e=>wheelChunks.push(e.data);
   window.wheelDone=new Promise(r=>wheelRecorder.onstop=r);wheelRecorder.start();
  });
- async function aim(){const pt=await page.evaluate(()=>{const s=brushV2.stars[0];return {x:v2Camera.x+s.x*v2Camera.zoom,y:v2Camera.y+s.y*v2Camera.zoom}});await page.mouse.move(box.x+pt.x,box.y+pt.y)}
- await aim();await page.mouse.wheel(0,-900);await page.waitForFunction(()=>v2Camera.zoom>2.99);await aim();await page.mouse.wheel(0,-100);
+ async function aim(){const pt=await page.evaluate(()=>{const s=brushV2.stars[0];return {x:v2Camera.x+s.x*v2Camera.zoom,y:v2Camera.y+s.y*v2Camera.zoom}});await page.mouse.move(box.x+pt.x*box.width/800,box.y+pt.y*box.height/600)}
+ await aim();await page.mouse.wheel(0,-Math.log(3)/.0015);await page.waitForFunction(()=>v2Camera.zoom>2.99);await aim();await page.mouse.wheel(0,-100);
  await page.waitForFunction(()=>!!nestedV2.transition);
  for(let n=0;n<35;n++){const range=await page.evaluate(()=>nestedV2.transition?.range);if(!range)break;await page.mouse.wheel(0,-range/10/.0015);await page.waitForTimeout(160)}
  await page.waitForFunction(()=>!nestedV2.transition&&!nestedV2.pending);
@@ -91,7 +92,7 @@ const {chromium}=require('playwright');const root=path.resolve(__dirname,'..');
  const wheelVideo=await page.evaluate(async()=>{
   wheelRecorder.stop();await wheelDone;wheelStream.getTracks().forEach(t=>t.stop());
   const bytes=new Uint8Array(await new Blob(wheelChunks).arrayBuffer());let binary='';for(let i=0;i<bytes.length;i+=16384)binary+=String.fromCharCode(...bytes.subarray(i,i+16384));return btoa(binary);
- });fs.writeFileSync(path.join(root,'tests','step6d3-wheel-roundtrip.webm'),Buffer.from(wheelVideo,'base64'));
+ });fs.writeFileSync(path.join(outputDir,'step6d3-wheel-roundtrip.webm'),Buffer.from(wheelVideo,'base64'));
  console.log('PASS recorded full real-wheel Parent -> Child -> Parent');
  assert.deepEqual(errors,[]);console.log('PASS spatial screenshots, recording, scales, anchored paths and wheel reversal');
  }finally{if(browser)await browser.close();await new Promise(r=>server.close(r))}

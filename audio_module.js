@@ -1,3 +1,16 @@
+// Listening prototype: remap the existing smooth paint-speed curve, with no extra clock.
+// Returning null leaves the original mouse-speed behaviour in control when Time is off.
+function musicRateFromTimeV2(time) {
+    if (!time?.enabled) return null;
+    const {seconds, paintSpeed, peakTime, restartTime, startSpeed, peakSpeed} = time;
+    if (![seconds, paintSpeed, peakTime, restartTime, startSpeed, peakSpeed].every(Number.isFinite) ||
+        startSpeed <= 0 || peakSpeed <= startSpeed) return 1;
+    const unit = value => Math.max(0, Math.min(1, value));
+    if (seconds <= peakTime) return 1 + .6 * unit((paintSpeed - startSpeed) / (peakSpeed - startSpeed));
+    if (seconds <= restartTime) return .8 + .8 * unit(paintSpeed / peakSpeed);
+    return .8 + .2 * unit(paintSpeed / startSpeed);
+}
+
 // Scene music, transition jingle, and sound processing for the interactive painting.
 const detachAudioModuleV1 = (() => {
     const bridge = typeof StarryNight !== 'undefined' ? StarryNight : null;
@@ -53,6 +66,7 @@ const detachAudioModuleV1 = (() => {
         element.playsInline = true;
         element.volume = context ? 1 : 0.05;
         element.playbackRate = 1;
+        element.preservesPitch = true;
         const chain = context
             ? makeCleanChain(context.createMediaElementSource(element), 0, 48, 15500)
             : { level: null, fade: null };
@@ -212,6 +226,15 @@ const detachAudioModuleV1 = (() => {
         window.removeEventListener('wheel', startFromGesture, true);
     }
 
+    function applyTimeMusicRate(state) {
+        const rate = musicRateFromTimeV2(state?.time);
+        if (rate === null) return false;
+        // Set even paused tracks so a new world never resumes at the old peak.
+        playbackRate = rate;
+        for (const track of tracks) track.element.playbackRate = rate;
+        return true;
+    }
+
     function changeSceneTrack(nextTrack) {
         nextTrack = Math.max(0, Math.min(tracks.length - 1, nextTrack));
         if (nextTrack === activeTrack) return;
@@ -302,6 +325,7 @@ const detachAudioModuleV1 = (() => {
             return;
         }
         if (event.phase !== 'end' || event.outcome !== 'completed') return;
+        applyTimeMusicRate(bridge.getState());
         if (event.direction === 'in') sceneDepth++;
         else if (event.direction === 'out') sceneDepth = Math.max(0, sceneDepth - 1);
         changeSceneTrack(Math.min(sceneDepth, 2));
@@ -309,6 +333,7 @@ const detachAudioModuleV1 = (() => {
 
     const offFrame = bridge.onFrame((dt, state) => {
         if (!state.ready) return;
+        const timeControlsRate = applyTimeMusicRate(state);
         syncAudioPause(state.flow.paused);
         if (audioPaused) return;
         const elapsed = Math.max(1, Math.min(Number(dt) || 16.67, 100)) / 1000;
@@ -318,7 +343,7 @@ const detachAudioModuleV1 = (() => {
         const volumeTarget = 0.11 + spread * 0.82;
         const rateTarget = 1 + speed * 0.9;
         volume += (volumeTarget - volume) * (1 - Math.exp(-elapsed / 0.38));
-        playbackRate += (rateTarget - playbackRate) * (1 - Math.exp(-elapsed / 0.22));
+        if (!timeControlsRate) playbackRate += (rateTarget - playbackRate) * (1 - Math.exp(-elapsed / 0.22));
         const duckTime = transitionDuckTarget < transitionDuck ? 0.09 : 0.55;
         transitionDuck += (transitionDuckTarget - transitionDuck) * (1 - Math.exp(-elapsed / duckTime));
         for (const track of tracks) {
