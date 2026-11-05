@@ -57,33 +57,23 @@ function advanceTimeIfPlaying(elapsedMilliseconds, state) {
     timeMechanic.update(elapsedMilliseconds);
 }
 
-function drawTimeAtmosphere() {
-    // 原有小星独立绘制；关闭 Time 时也需要完整显示它们。
-    if (nestedV2.transition) {
-        // 下面的坐标和世界引用均沿用组员已经实现的穿梭画面。
-        let portal = getPortalRenderV2();
-        let transition = nestedV2.transition;
-        let calm = timeCalmPreview;
-        let parentTime = timeMechanic;
-        let childTime = calm;
-        if (transition.direction === 'out') {
-            parentTime = calm;
-            childTime = timeMechanic;
-        }
-        // 沿用组员悬停光效的时间窗口：旧画面先退场，新画面后入场。
-        // 穿梭中段留给原来的颜料过渡，避免出现两套独立星光叠在一起。
-        let parentFadeEnd = 0.42;
-        let childFadeStart = 0.72;
-        let parentOpacity = 1 - portal.progress / parentFadeEnd;
-        let childOpacity = (portal.progress - childFadeStart) / 0.28;
-        if (parentOpacity < 0) parentOpacity = 0;
-        if (childOpacity < 0) childOpacity = 0;
-        // 原有小星连续交接；只有补充高亮和天空笔触在穿梭中段退场。
-        drawTimeWorld(transition.parent, getStarEntryCameraV2(), parentTime, parentOpacity, 1 - portal.progress, brushFlowTime);
-        drawTimeWorld(transition.child, portal.childCamera, childTime, childOpacity, portal.progress, portal.child.flowTime || 0);
-    } else {
-        drawTimeWorld(captureWorldV2(), v2Camera, timeMechanic, 1);
+// The shader now transports and exposes Time paint together with the base paint.
+function getTimePaintLayers(parentWorld, portal) {
+    if (!portal) {
+        const parent = drawTimePaintLayer(0, parentWorld, timeMechanic);
+        return {parent, child: parent};
     }
+    const leavingChild = nestedV2.transition.direction === 'out';
+    const parentTime = leavingChild ? timeCalmPreview : timeMechanic;
+    const childTime = leavingChild ? timeMechanic : timeCalmPreview;
+    // Preserve the existing extra-mark exit/entry windows during navigation.
+    // Original small stars follow the shader's structure transition, once only.
+    return {
+        parent: drawTimePaintLayer(0, parentWorld, parentTime,
+            Math.max(0, 1 - portal.progress / 0.42)),
+        child: drawTimePaintLayer(1, portal.child, childTime,
+            Math.max(0, (portal.progress - 0.72) / 0.28))
+    };
 }
 
 function getTimeFlow(world, x, y) {

@@ -107,6 +107,8 @@ varying vec2 vTexCoord;
 
 uniform sampler2D u_paint;
 uniform sampler2D u_flowMap;
+uniform sampler2D u_timePaint;
+uniform sampler2D u_childTimePaint;
 
 uniform vec2 u_resolution;
 uniform float u_time;
@@ -211,7 +213,14 @@ vec4 detailedPaint(sampler2D paint, sampler2D a, sampler2D b,
   return mix(base, mix(oldPaint, newPaint, weights.z), weights.w);
 }
 
-vec4 samplePainting(sampler2D paint, sampler2D flow, vec2 point,
+// Composite each Time pigment sample BEFORE averaging exposure positions.
+vec4 withTimePaint(vec4 base, sampler2D timePaint, vec2 uv) {
+  vec4 pigment = texture2D(timePaint, uv);
+  // p5 uploads canvas textures with premultiplied alpha.
+  return vec4(base.rgb * (1.0 - pigment.a) + pigment.rgb, base.a);
+}
+
+vec4 samplePainting(sampler2D paint, sampler2D flow, sampler2D timePaint, vec2 point,
                     vec3 camera, float time,
                     sampler2D detailA, sampler2D detailB, vec4 rectA, vec4 rectB, vec4 weights,
                     vec2 morphDirection, float morph, float reflectEdges, float exposure, float restartOffset) {
@@ -315,7 +324,7 @@ vec4 samplePainting(sampler2D paint, sampler2D flow, vec2 point,
     vec2(0.999)
   );
 
-  vec4 movingPaint = detailedPaint(paint, detailA, detailB, rectA, rectB, weights, displacedUV, camera.z);
+  vec4 movingPaint = withTimePaint(detailedPaint(paint, detailA, detailB, rectA, rectB, weights, displacedUV, camera.z), timePaint, displacedUV);
   // Skip extra samples while the exposure offset is still below a visible pixel.
   if (exposure < .0001 || u_flowEnabled <= 0.0) return movingPaint;
 
@@ -330,8 +339,9 @@ vec4 samplePainting(sampler2D paint, sampler2D flow, vec2 point,
     vec2 sampleOffset = direction * (sin(samplePhase) + restartOffset) * u_strength * localStrength;
     sampleOffset *= min(1.0, max(6.0, u_strength) / max(length(sampleOffset * localScale), .001));
     vec2 sampleUV = uv - (sampleOffset + cursorOffset) * u_flowEnabled / u_resolution;
-    exposedPaint += detailedPaint(paint, detailA, detailB, rectA, rectB, weights,
-      clamp(sampleUV, vec2(.001), vec2(.999)), camera.z);
+    sampleUV = clamp(sampleUV, vec2(.001), vec2(.999));
+    exposedPaint += withTimePaint(detailedPaint(paint, detailA, detailB, rectA, rectB, weights,
+      sampleUV, camera.z), timePaint, sampleUV);
   }
   return exposedPaint / 16.0;
 }
@@ -352,12 +362,12 @@ void main() {
   // Depth is wheel driven; colour, direction and structure share continuous endpoints.
   float phase = u_progress * u_portalActive;
   if (phase <= 0.0) {
-    gl_FragColor = samplePainting(u_paint, u_flowMap, parentPoint, u_camera, u_time,
+    gl_FragColor = samplePainting(u_paint, u_flowMap, u_timePaint, parentPoint, u_camera, u_time,
       u_detailA, u_detailB, u_detailRectA, u_detailRectB, u_detailWeights, vec2(0.0), 0.0, 0.0, u_timeBlend.x, u_restartOffset.x);
     return;
   }
   if (phase >= 1.0) {
-    gl_FragColor = samplePainting(u_childPaint, u_childFlow, childPoint, u_childCamera, u_childTime,
+    gl_FragColor = samplePainting(u_childPaint, u_childFlow, u_childTimePaint, childPoint, u_childCamera, u_childTime,
       u_childDetailA, u_childDetailB, u_childDetailRectA, u_childDetailRectB, u_childDetailWeights, vec2(0.0), 0.0, 0.0, u_timeBlend.y, u_restartOffset.y);
     return;
   }
@@ -382,9 +392,9 @@ void main() {
   float colour = smoothstep(arrival-.30,arrival-.03,phase);
   float structure = smoothstep(arrival-.02,arrival+.20,phase);
   vec2 blendedFlow = turnFlow(parentFlow, childFlow, depth);
-  vec4 parent = samplePainting(u_paint, u_flowMap, parentPoint, u_camera, u_time,
+  vec4 parent = samplePainting(u_paint, u_flowMap, u_timePaint, parentPoint, u_camera, u_time,
     u_detailA, u_detailB, u_detailRectA, u_detailRectB, u_detailWeights, blendedFlow, depth, 0.0, u_timeBlend.x, u_restartOffset.x);
-  vec4 child = samplePainting(u_childPaint, u_childFlow, childPoint, u_childCamera, u_childTime,
+  vec4 child = samplePainting(u_childPaint, u_childFlow, u_childTimePaint, childPoint, u_childCamera, u_childTime,
     u_childDetailA, u_childDetailB, u_childDetailRectA, u_childDetailRectB, u_childDetailWeights, blendedFlow, 1.0-depth, 1.0, u_timeBlend.y, u_restartOffset.y);
   // Transport child colour along its flow before resolving its composition.
   // Flow-aligned samples transfer chroma before restoring child luminance/contrast.
@@ -537,6 +547,7 @@ function drawBrushFlowShader(present = true, camera = null, portal = null) {
     const child = portal ? portal.child : { base: brushV2.base, flowMap: brushFlowMap };
     const childCamera = portal ? portal.childCamera : camera;
     const parentWorld = captureWorldV2();
+    const timePaint = getTimePaintLayers(parentWorld, portal);
     updateBrushDetailsV2([
         portal && portal.progress >= 1 ? null : detailViewV2(parentWorld, camera),
         portal && portal.progress > 0 ? detailViewV2(child, childCamera) : null
@@ -549,6 +560,7 @@ function drawBrushFlowShader(present = true, camera = null, portal = null) {
     const leavingChild = portal && nestedV2.transition && nestedV2.transition.direction === 'out';
     const uniforms = {
         u_paint: brushV2.base, u_flowMap: brushFlowMap,
+        u_timePaint: timePaint.parent, u_childTimePaint: timePaint.child,
         u_childPaint: child.base, u_childFlow: child.flowMap,
         u_resolution: [width, height], u_time: brushFlowTime,
         u_childTime: portal ? child.flowTime || 0 : brushFlowTime,

@@ -1,16 +1,20 @@
-// 绘制原有小星和天空高亮，坐标沿用世界和相机。
-
-function drawTimeWorld(world, camera, timeValues, opacity, starOpacity = opacity, flowTime = brushFlowTime) {
-    if (opacity <= 0 && starOpacity <= 0) return;
-    push();
-    translate(camera.x, camera.y);
-    scale(camera.zoom);
-    drawTimeOriginalStars(world, timeValues, starOpacity, flowTime, camera.zoom);
-    if (timeMechanic.enabled && timeMechanic.showExtraMarks) {
-        drawTimeSkyStrokes(world, timeValues, opacity, flowTime, camera.zoom);
-        drawTimeStarHighlights(world, timeValues, opacity, flowTime, camera.zoom);
+// Paint Time details in world space BEFORE the shared flow/exposure shader.
+// Reuse two surfaces across worlds; never allocate one per animation frame.
+const timePaintBuffers = [];
+function drawTimePaintLayer(slot, world, timeValues, opacity = 1) {
+    let g = timePaintBuffers[slot];
+    if (!g || g.width !== width || g.height !== height) {
+        if (g) g.remove();
+        g = timePaintBuffers[slot] = createGraphics(width, height);
+        g.pixelDensity(1);
     }
-    pop();
+    g.clear();
+    drawTimeOriginalStars(g, world, timeValues);
+    if (timeMechanic.enabled && timeMechanic.showExtraMarks && opacity > 0) {
+        drawTimeSkyStrokes(g, world, timeValues, opacity);
+        drawTimeStarHighlights(g, world, timeValues, opacity);
+    }
+    return g;
 }
 
 function isTimeStarNearby(stars, x, y, margin) {
@@ -24,7 +28,7 @@ function isTimeStarNearby(stars, x, y, margin) {
     return false;
 }
 
-function drawTimeSkyStrokes(world, timeValues, opacity, flowTime, zoom) {
+function drawTimeSkyStrokes(g, world, timeValues, opacity) {
     // 只画上方天空和树的右侧，不覆盖山、村庄或柏树。
     // 固定起点，每隔一笔保留基础笔触，中间的笔触随密度逐渐淡入。
     // 不直接改变循环步长，避免原有笔触随着密度变化滑动或跳位。
@@ -42,27 +46,18 @@ function drawTimeSkyStrokes(world, timeValues, opacity, flowTime, zoom) {
             let y = rowHeight + mainWave + smallWave + Math.sin(mark * 1.9 + row * 3) * 6;
             if (isTimeStarNearby(world.stars, x, y, 8)) continue;
 
-            const motion = getTimeMotion(world, x, y, timeValues, flowTime, zoom);
-            push();
-            translate(x + motion.x, y + motion.y);
-            rotate(motion.angle);
-            // 保持原画的蓝色系，用细短线条表现额外的颜料笔触。
-            // 亮度由 0.2 到 1，把它换成 0 到 1 的进度。
-            let brightnessProgress = (timeValues.starBrightness - 0.2) / 0.8;
-            let strokeOpacity = opacity * visibility * lerp(18, 85, brightnessProgress);
-            let highlightOpacity = opacity * visibility * lerp(6, 35, brightnessProgress);
-            stroke(111, 159, 190, strokeOpacity);
-            strokeWeight(2.4);
-            line(-7, 0, 7, 0);
-            stroke(162, 192, 204, highlightOpacity);
-            strokeWeight(0.8);
-            line(-5, -0.7, 5, -0.7);
-            pop();
+            // Same curved paint body and pigment highlight as the original sky.
+            const flow = getTimeFlow(world, x, y);
+            const brightnessProgress = (timeValues.starBrightness - 0.2) / 0.8;
+            const strokeOpacity = opacity * visibility * lerp(18, 85, brightnessProgress);
+            const variation = (Math.sin(mark * 4.7 + row * 2.1) + 1) / 2;
+            paintV2Stroke(g, x, y, flow.angle, lerp(10, 17, variation),
+                lerp(2.2, 3.2, variation), [111, 159, 190], strokeOpacity);
         }
     }
 }
 
-function drawTimeStarHighlights(world, timeValues, opacity, flowTime, zoom) {
+function drawTimeStarHighlights(g, world, timeValues, opacity) {
     const stars = world.stars;
     const brightness = timeValues.starBrightness;
     // 只增加星光笔触的强弱；不把整张画一起调亮。
@@ -77,25 +72,16 @@ function drawTimeStarHighlights(world, timeValues, opacity, flowTime, zoom) {
             let radius = star.radius * (0.25 + radiusVariation * 0.95);
             let markX = star.x + Math.cos(angle) * radius;
             let markY = star.y + Math.sin(angle) * radius;
-            const motion = getTimeMotion(world, markX, markY, timeValues, flowTime, zoom);
-            push();
-            translate(markX + motion.x, markY + motion.y);
-            rotate(angle + Math.PI / 2);
-            let brightnessProgress = (brightness - 0.2) / 0.8;
-            let markOpacity = opacity * lerp(8, 145, brightnessProgress);
-            stroke(255, 230, 156, markOpacity);
-            if (star.type === 'moon') {
-                strokeWeight(2.2);
-            } else {
-                strokeWeight(1.6);
-            }
-            line(-star.radius * 0.10, 0, star.radius * 0.10, 0);
-            pop();
+            const brightnessProgress = (brightness - 0.2) / 0.8;
+            const markOpacity = opacity * lerp(8, 145, brightnessProgress);
+            paintV2Stroke(g, markX, markY, angle + Math.PI / 2,
+                star.radius * 0.2, star.type === 'moon' ? 2.2 : 1.6,
+                [255, 230, 156], markOpacity);
         }
     }
 }
 
-function drawTimeOriginalStars(world, timeValues, opacity, flowTime, zoom) {
+function drawTimeOriginalStars(g, world, timeValues) {
     // 重画原有小星的笔触，不再额外生成一套星星。
     let starNumber = 0;
     for (const star of world.stars) {
@@ -108,33 +94,8 @@ function drawTimeOriginalStars(world, timeValues, opacity, flowTime, zoom) {
         for (const mark of star.timeStrokes) {
             // 柏树仍在星光前面；不把被树遮住的笔触补到树上。
             if (world.cypress && pointInCypress(mark.x, mark.y, world.cypress)) continue;
-            const motion = getTimeMotion(world, mark.x, mark.y, timeValues, flowTime, zoom);
-            const x = mark.x + motion.x;
-            const y = mark.y + motion.y;
-            if (world.cypress && pointInCypress(x, y, world.cypress)) continue;
-            paintV2Stroke(window, x, y, mark.angle, mark.len, mark.weight,
-                mark.colour, mark.alpha * visibility * opacity);
+            paintV2Stroke(g, mark.x, mark.y, mark.angle, mark.len, mark.weight,
+                mark.colour, mark.alpha * visibility);
         }
     }
-}
-
-function getTimeMotion(world, x, y, timeValues, flowTime, zoom) {
-    const flow = getTimeFlow(world, x, y);
-    if (!brushFlowSettings.enabled) return {x: 0, y: 0, angle: flow.angle};
-    // 直接读取原画已累积的时钟，暂停或改变速度时不会另开一个计时器。
-    const phase = (x * flow.x + y * flow.y) / 48 * 2 - flowTime * 1.2;
-    const blend = timeMechanic.enabled ? timeValues.paintBlend : 0;
-    const restart = timeMechanic.enabled ? timeValues.paintRestartOffset : 0;
-    const samples = blend >= 0.0001 ? 16 : 1;
-    const limit = Math.max(6, brushFlowSettings.strength) / zoom;
-    let offset = 0;
-    // 与原画取相同的运动位置，只平均位移；每笔仍然只画一次，避免亮度叠加。
-    for (let i = 0; i < samples; i++) {
-        const samplePhase = phase + ((i + 0.5) / samples - 0.5) * blend * Math.PI * 2;
-        const wave = Math.sin(samplePhase) + (samples > 1 ? restart : 0);
-        const distance = wave * brushFlowSettings.strength * flow.strength;
-        offset += Math.max(-limit, Math.min(limit, distance));
-    }
-    offset /= samples;
-    return {x: flow.x * offset, y: flow.y * offset, angle: flow.angle};
 }

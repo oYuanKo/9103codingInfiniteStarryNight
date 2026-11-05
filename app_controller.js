@@ -26,7 +26,6 @@ function drawPaintingAppV2() {
         const painting = drawBrushFlowShader(false, v2Camera);
         if (painting) image(painting, 0, 0, width, height);
     }
-    if (typeof drawTimeAtmosphere === 'function') drawTimeAtmosphere();
     drawStarHoverLightV2(deltaTime);
     publishGroupFrameV2(deltaTime);
 }
