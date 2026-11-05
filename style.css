@@ -1,10 +1,36 @@
 html, body { margin: 0; padding: 0; background: #091525; color: #b9c2cc; }
-body { font: 12px/1.5 Arial, sans-serif; overflow: hidden; }
-#presentation { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 12px; }
+body { font: 12px/1.5 Arial, sans-serif; overflow: auto; }
+#presentation { position: relative; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-start; gap: 12px; padding: 16px; box-sizing: border-box;
+  padding-top: max(16px, calc((100dvh - var(--painting-height, 600px) - 38px) / 2)); }
 #artwork canvas { display: block; }
-#presentation-guide { width: min(800px, calc(100% - 32px)); height: 82px; text-align: center; }
-#help-toggle { font: inherit; color: #cfcaac; border: 1px solid #394453; border-radius: 3px;
+#presentation-guide { width: min(960px, 100%); min-height: 26px; text-align: center; }
+#interaction-guide { width: min(960px, 100%); text-align: left; }
+#presentation[data-guide-side="true"] #interaction-guide {
+  position: absolute; left: calc(50% + var(--painting-width) / 2 + 24px); top: 50vh;
+  transform: translateY(-50%); width: 260px; max-height: calc(100dvh - 32px); overflow: auto;
+  padding-left: 16px; border-left: 1px solid #394453; box-sizing: border-box;
+}
+#help-toggle, #time-toggle { font: inherit; color: #cfcaac; border: 1px solid #394453; border-radius: 3px;
   background: transparent; padding: 3px 10px; cursor: pointer; }
-#help-toggle:hover, #help-toggle:focus-visible { color: #fff2cf; border-color: #a59b77; }
+#help-toggle:hover, #help-toggle:focus-visible, #time-toggle:hover, #time-toggle:focus-visible { color: #fff2cf; border-color: #a59b77; }
 #painting-help { margin: 8px 0 0; }
+#time-toggle { margin-right: 8px; }
+#time-toggle[aria-pressed="true"] { background: #26374a; border-color: #a59b77; color: #fff2cf; }
+
+/* Guide typography and decoration only; painting geometry stays unchanged. */
+#interaction-guide { color: #eee1c8; background: #091525; }
+#presentation[data-guide-side="true"] #interaction-guide { border-left-color: #9e8150; scrollbar-width: thin; scrollbar-color: #9e8150 #091525; }
+#help-toggle { color: #eee1c8; border-color: #9e8150; font: 14px/1.4 Georgia, 'Times New Roman', serif; padding: 5px 10px; }
+#help-toggle:focus-visible { outline: 2px solid #edc77e; outline-offset: 4px; }
+#painting-help { margin-top: 20px; }
+#painting-help h2 { margin: 0 0 17px; color: #f3e6cf; font: normal 26px/1.15 Georgia, 'Times New Roman', serif; }
+#painting-help .guide-section { display: grid; grid-template-columns: 23px minmax(0, 1fr); gap: 12px; padding: 16px 0; border-top: 1px solid #806c46; }
+#painting-help .guide-section > div { border-left: 1px solid #806c46; padding-left: 12px; }
+#painting-help h3 { margin: 0 0 7px; color: #e2b96f; font: normal 13px/1.2 Georgia, 'Times New Roman', serif; text-transform: uppercase; letter-spacing: .16em; }
+#painting-help p { margin: 0; font: 13px/1.6 Georgia, 'Times New Roman', serif; }
+#painting-help .guide-icon { width: 23px; height: 32px; color: #e2b96f; align-self: center; }
+#painting-help .guide-keys { margin: 0; font: 13px/1.6 Georgia, 'Times New Roman', serif; }
+#painting-help .guide-keys > div { display: flex; align-items: center; gap: 10px; margin-top: 7px; }
+#painting-help .guide-keys dt, #painting-help .guide-keys dd { margin: 0; }
+#painting-help kbd { display: inline-block; min-width: 20px; padding: 1px 2px; text-align: center; border: 1px solid #9e8150; border-radius: 3px; font: inherit; color: #f3e6cf; }

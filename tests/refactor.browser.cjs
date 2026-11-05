@@ -90,7 +90,7 @@ if (!baseline) {
       hashes[seed] = await compareLive('seed ' + seed);
       await screenshot(seed);
     }
-    await page.keyboard.press('q');
+    await page.evaluate(()=>{resetNestedV2();universeSeed=12;initBrushV2(12);rebuildBrushFlowMap();brushFlowTime=0;v2Camera.reset();});
     await page.evaluate(async () => {
       const star = brushV2.stars[0];
       Object.assign(v2Camera, stillCameraV2(3, Math.max(width * (1 - 3), Math.min(0, width / 2 - star.x * 3)), Math.max(height * (1 - 3), Math.min(0, height / 2 - star.y * 3))));

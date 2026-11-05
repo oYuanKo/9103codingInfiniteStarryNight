@@ -14,7 +14,7 @@ const api=await page.evaluate(()=>{
  return {initial,immutable,bad,clamp,invalidSubscriber,calls:frameCalls,untouched};
 });console.log('API checks',api);assert(api.immutable&&api.untouched&&api.bad.every(Boolean)&&api.invalidSubscriber);assert.equal(api.calls,2);assert.deepEqual(api.clamp,[3,0,30,0]);assert.equal(api.initial.flow.speed,1.2);assert.equal(api.initial.flow.strength,5);console.log('PASS frozen snapshots, validation/clamps, defaults, unsubscribe');
 const faults=await page.evaluate(async()=>{let sync=0,asyncCount=0;StarryNight.onFrame(()=>{sync++;throw Error('intentional sync test')});StarryNight.onFrame(async()=>{asyncCount++;throw Error('intentional async test')});draw();await new Promise(r=>setTimeout(r,0));draw();return {sync,asyncCount}});assert.deepEqual(faults,{sync:1,asyncCount:1});assert.equal(warnings.length,2);
-await page.evaluate(()=>{window.events=[];window.changes=[];window.offPortal=StarryNight.onPortal(e=>{events.push(e);if(!Object.isFrozen(e))throw Error('mutable portal')});window.offUniverse=StarryNight.onUniverseChanged(e=>changes.push(e));draw();window.openPortal=async(edge,direction)=>{requestPortalV2(edge,direction,direction==='in'?-100:100);while(nestedV2.pending||nestedV2.preload){updateChildPreloadV2();await new Promise(requestAnimationFrame)}nestedV2.transition.progress=nestedV2.transition.targetProgress=.4;draw()}});
+await page.evaluate(()=>{window.events=[];window.changes=[];window.resets=[];window.offReset=StarryNight.onReset(s=>resets.push(s));window.offPortal=StarryNight.onPortal(e=>{events.push(e);if(!Object.isFrozen(e))throw Error('mutable portal')});window.offUniverse=StarryNight.onUniverseChanged(e=>changes.push(e));draw();window.openPortal=async(edge,direction)=>{requestPortalV2(edge,direction,direction==='in'?-100:100);while(nestedV2.pending||nestedV2.preload){updateChildPreloadV2();await new Promise(requestAnimationFrame)}nestedV2.transition.progress=nestedV2.transition.targetProgress=.4;draw()}});
 const navigation=await page.evaluate(async()=>{
  const initial=StarryNight.getState().universe.id;
  await openPortal(childEdgeV2(brushV2.stars[0]),'in');const p=nestedV2.transition.progress;let frozen=false;try{(function(){'use strict';StarryNight.getState().portal.progress=.99})()}catch(e){frozen=e instanceof TypeError}
@@ -25,10 +25,10 @@ const navigation=await page.evaluate(async()=>{
  // An interrupted portal emits a reset end; no callback can write its progress.
  await openPortal(childEdgeV2(brushV2.stars[0]),'in');return {initial,child,returned,held,frozen};
 });assert(navigation.returned&&navigation.held&&navigation.frozen&&navigation.initial!==navigation.child);
-await page.keyboard.press('w');await page.evaluate(()=>draw());
-const events=await page.evaluate(()=>{offPortal();offUniverse();const n=events.length;draw();return {events,changes,unsubscribed:events.length===n,worlds:starHoverLightV2.worlds.size}});
-assert(events.unsubscribed&&events.worlds===1);assert.equal(events.events.filter(e=>e.phase==='begin').length,5);assert.equal(events.events.filter(e=>e.phase==='end').length,5);assert(events.events.some(e=>e.outcome==='reset'));assert.equal(events.changes.at(-1).current.seed,89);console.log('PASS nested graph IDs, begin/progress/end/reset, stopped progress, callback isolation',navigation);
-await page.keyboard.press('q');await page.evaluate(()=>draw());
+await page.evaluate(()=>restartPaintingV2(89));await page.evaluate(()=>draw());
+const events=await page.evaluate(()=>{offPortal();offUniverse();offReset();const n=events.length;draw();return {events,changes,resets,unsubscribed:events.length===n,worlds:starHoverLightV2.worlds.size}});
+assert(events.unsubscribed&&events.worlds===1);assert.equal(events.events.filter(e=>e.phase==='begin').length,5);assert.equal(events.events.filter(e=>e.phase==='end').length,4);assert.equal(events.resets.length,1);assert.equal(events.resets[0].universe.seed,89);assert.equal(events.changes.at(-1).current.seed,89);console.log('PASS nested graph IDs, begin/progress/end/reset, stopped progress, callback isolation',navigation);
+await page.evaluate(()=>restartPaintingV2(12));await page.evaluate(()=>draw());
 for(const [w,h] of [[1000,800],[640,580],[1920,1080],[1366,768]]){
  await page.setViewportSize({width:w,height:h});const canvas=page.locator('#artwork canvas');const box=await canvas.boundingBox();const target=await page.evaluate(()=>{v2Camera.reset();return brushV2.stars[0]});
  await page.mouse.move(box.x+target.x*box.width/800,box.y+target.y*box.height/600);

@@ -3,11 +3,6 @@ function handlePaintingKeyV2(event) {
   if (event?.target?.closest('input, textarea, select, [contenteditable="true"]')) return;
   if (key === 'h' || key === 'H') { paintingPresentationV2.toggle(); return; }
   if (key === ' ' && event?.target?.closest('button')) return;
-  const testSeeds = {
-    q: 12,
-    w: 89,
-    e: 205
-  };
 
   if (key === "f" || key === "F") {
     brushFlowSettings.enabled =
@@ -35,19 +30,6 @@ function handlePaintingKeyV2(event) {
 
 
 
-  const seed = testSeeds[key.toLowerCase()];
-
-  if (seed !== undefined) {
-    resetNestedV2();
-
-    universeSeed = seed;
-    initBrushV2(seed);
-    rebuildBrushFlowMap();
-    brushFlowTime = 0;
-
-    v2Camera.reset();
-  }
-
   if (key === "c" || key === "C") {
     brushFlowSettings.cursorEnabled =
       !brushFlowSettings.cursorEnabled;
@@ -60,7 +42,7 @@ function handlePaintingKeyV2(event) {
     );
   }
   if (key === "r" || key === "R") {
-    resetNestedCameraV2();
+    if (!event?.repeat) restartPaintingV2();
   }
 
 }

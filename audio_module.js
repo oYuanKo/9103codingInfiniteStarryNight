@@ -71,6 +71,7 @@ const detachAudioModuleV1 = (() => {
     jingleElement.volume = context ? 1 : 0.4;
     if (jingleChain.fade) jingleChain.fade.gain.value = 1;
 
+    let audioEpoch = 0;
     let sceneDepth = 0;
     let activeTrack = 0;
     let disposed = false;
@@ -236,7 +237,9 @@ const detachAudioModuleV1 = (() => {
         if (disposed) return;
         transitionDuckTarget = 0.16;
         if (jingleTimer) cancelAudioTimer(jingleTimer);
+        const epoch = audioEpoch;
         const start = () => {
+            if (epoch !== audioEpoch) return;
             if (disposed || (!audioPaused && context && context.state !== 'running')) return;
             try { jingleElement.currentTime = 0; } catch (_) {}
             if (jingleChain.fade && context) {
@@ -261,6 +264,37 @@ const detachAudioModuleV1 = (() => {
         if (audioPaused || !context || context.state === 'running') start();
         else void startAudio().then(start);
     }
+
+    const offReset = bridge.onReset(() => {
+        audioEpoch++;
+        for (const timer of audioTimers) cancelAudioTimer(timer);
+        pauseTimers.clear();
+        pausedElements.clear();
+        jingleTimer = null;
+        sceneDepth = activeTrack = 0;
+        transitionDuck = transitionDuckTarget = 1;
+        playbackRate = 1;
+        volume = 0.11;
+        audioPaused = false;
+        for (const [index, track] of tracks.entries()) {
+            track.element.pause();
+            track.element.currentTime = 0;
+            track.element.playbackRate = 1;
+            track.fadeAmount = track.fadeTarget = index === 0 ? 1 : 0;
+            if (track.fade) {
+                track.fade.gain.cancelScheduledValues(context.currentTime);
+                track.fade.gain.setValueAtTime(track.fadeAmount, context.currentTime);
+                track.level.gain.value = volume * 0.58;
+            } else track.element.volume = volume * 0.58 * track.fadeAmount;
+        }
+        jingleElement.pause();
+        jingleElement.currentTime = 0;
+        if (jingleChain.fade) {
+            jingleChain.fade.gain.cancelScheduledValues(context.currentTime);
+            jingleChain.fade.gain.setValueAtTime(1, context.currentTime);
+        }
+        void startAudio();
+    });
 
     const offPortal = bridge.onPortal(event => {
         if (event.phase === 'begin') {
@@ -311,6 +345,7 @@ const detachAudioModuleV1 = (() => {
         disposed = true;
         offFrame();
         offPortal();
+        offReset();
         window.removeEventListener('keydown', syncPauseFromKey, true);
         stopUnlockListeners();
         for (const timer of audioTimers) cancelAudioTimer(timer);

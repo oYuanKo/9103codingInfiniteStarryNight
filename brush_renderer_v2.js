@@ -35,7 +35,7 @@ const STAR_BRUSH_COLORS = {
 };
 
 
-function generateBrushV2Stars() {
+function generateBrushV2Stars(seed = universeSeed, variedStars = false) {
     const stars = [];
 
     // 1. Main moon: dominant focal point
@@ -144,7 +144,7 @@ function generateBrushV2Stars() {
         placed++;
     }
 
-    return stars;
+    return variedStars ? spreadWorldStarsV2(stars, seed) : stars;
 }
 
 
@@ -278,7 +278,7 @@ function paintV2Stroke(g, x, y, angle, len, weight, colour, alpha = 255) {
 
 
 // Generate the complete painted world
-function* buildBrushV2Steps(seed, preservePrevious = false) {
+function* buildBrushV2Steps(seed, preservePrevious = false, variedStars = false) {
     randomSeed(seed);
     noiseSeed(seed);
 
@@ -358,7 +358,7 @@ function* buildBrushV2Steps(seed, preservePrevious = false) {
         }
     }
 
-    brushV2.stars = generateBrushV2Stars();
+    brushV2.stars = generateBrushV2Stars(seed, variedStars);
     paintAllBrushV2Stars(brushV2.base);
     yield* paintBrushMountainsSteps(brushV2.base);
 
@@ -399,8 +399,13 @@ function* buildBrushV2Steps(seed, preservePrevious = false) {
 
 function fillBrushSkyGapRow(g, y) {
     // get() 取邻近颜料色，再沿流向补一小笔；放大时也会重画同一笔。
+    // Read an unchanged scanline once instead of one canvas readback per pixel.
+    // Refresh after every painted stroke: later samples must see earlier paint.
+    const canReadRow = g.pixelDensity() === 1;
+    let row = canReadRow ? g.drawingContext.getImageData(0, y, width, 1).data : null;
     for (let x = 4; x < width - 4; x++) {
-        const pixel = g.get(x, y);
+        const offset = x * 4;
+        const pixel = row ? row.subarray(offset, offset + 4) : g.get(x, y);
         if (pixel[0] > 16 || pixel[1] > 32 || pixel[2] > 64) continue;
         if (brushV2.cypress && pointInCypress(x, y, brushV2.cypress)) continue;
         const neighbours = [g.get(x - 4, y), g.get(x + 4, y),
@@ -415,6 +420,7 @@ function fillBrushSkyGapRow(g, y) {
         if (count === 0) continue;
         for (let channel = 0; channel < 3; channel++) colour[channel] /= count;
         paintV2Stroke(g, x, y, brushV2Angle(x, y), 4, 3, colour);
+        if (canReadRow) row = g.drawingContext.getImageData(0, y, width, 1).data;
     }
 }
 
@@ -676,4 +682,85 @@ function paintBrushV2StarPart(g, star, paintPart) {
     } finally {
         g.timeStarStrokes = null;
     }
+}
+// Local PRNG: layout sampling never advances the painting's shared random stream.
+function worldStarRandomV2(seed) {
+    let state = (seed ^ 0x6d2b79f5) >>> 0;
+    return () => {
+        state = (state + 0x6d2b79f5) >>> 0;
+        let value = Math.imul(state ^ (state >>> 15), state | 1);
+        value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+        return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+    };
+}
+function majorStarMarginV2(star) {
+    return star.type === 'moon' ? star.radius * 3.2 : star.radius * 2.4 + 6;
+}
+function safeMajorStarV2(star, placed) {
+    const margin = majorStarMarginV2(star);
+    if (star.x - margin < 8 || star.x + margin > width - 8 || star.y - margin < 8 ||
+        star.y + margin > Math.min(height * .54, mountainRidgeY(star.x, 0) - 20)) return false;
+    // Reserve the full cypress silhouette, including its tip and painted edge.
+    if (star.x - margin < width * .19 && star.y + margin > height * .34) return false;
+    // Keep the central vortex legible, with room between the star halos.
+    if (Math.hypot(star.x - width * .48, star.y - height * .32) < height * .10 + margin) return false;
+    return placed.every(other => Math.hypot(star.x - other.x, star.y - other.y) >=
+        margin + majorStarMarginV2(other) + 12);
+}
+function spreadWorldStarsV2(stars, seed) {
+    const sample = worldStarRandomV2(seed);
+    const moon = stars.find(star => star.type === 'moon');
+    const majors = stars.filter(star => star.type === 'major');
+    let layout = null;
+    // Bounded whole-layout retries avoid squeezing the last star into a bad gap.
+    for (let attempt = 0; attempt < 64 && !layout; attempt++) {
+        const placed = [moon];
+        for (const star of majors) {
+            let candidate = null;
+            for (let n = 0; n < 200; n++) {
+                const point = {...star, x: width * (.08 + sample() * .84),
+                    y: height * (.08 + sample() * .40)};
+                if (safeMajorStarV2(point, placed)) { candidate = point; break; }
+            }
+            if (!candidate) break;
+            placed.push(candidate);
+        }
+        if (placed.length === majors.length + 1) layout = placed.slice(1);
+    }
+    // Safe, spaced fallback for the supported five-star, 800x600 composition.
+    if (!layout) {
+        const points = [[.1375,.1167],[.35,.1167],[.5875,.1167],[.30625,.45],[.7125,.45]];
+        for (let i = points.length - 1; i > 0; i--) {
+            const j = Math.floor(sample() * (i + 1));
+            [points[i], points[j]] = [points[j], points[i]];
+        }
+        layout = majors.map((star, i) => ({...star, x: points[i][0] * width, y: points[i][1] * height}));
+    }
+    for (let i = 0; i < majors.length; i++) Object.assign(majors[i], layout[i]);
+    // Keep supporting stars unless a moved major halo now occupies their place.
+    const placed = [moon, ...majors];
+    const safeSmall = star => Math.hypot(star.x - width * .48, star.y - height * .32) >= Math.min(width,height) * .14 &&
+        placed.every(other => Math.hypot(star.x - other.x, star.y - other.y) >=
+            (other.type === 'moon' ? other.radius * 3.8 + 12 :
+             other.type === 'major' ? other.radius * 2.8 + 12 : other.radius + star.radius + 8));
+    for (const star of stars.filter(star => star.type === 'small')) {
+        if (!safeSmall(star)) {
+            let found = false;
+            for (let i = 0; i < 2000; i++) {
+                star.x = width * (.06 + sample() * .88);
+                star.y = height * (.06 + sample() * .48);
+                if (safeSmall(star)) { found = true; break; }
+            }
+            if (!found) {
+                search: for (let y = height * .06; y <= height * .54; y += 8) {
+                    for (let x = width * .06; x <= width * .94; x += 8) {
+                        star.x = x; star.y = y;
+                        if (safeSmall(star)) break search;
+                    }
+                }
+            }
+        }
+        placed.push(star);
+    }
+    return stars;
 }

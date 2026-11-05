@@ -10,7 +10,8 @@ function drawTimePaintLayer(slot, world, timeValues, opacity = 1) {
     }
     g.clear();
     drawTimeOriginalStars(g, world, timeValues);
-    if (timeMechanic.enabled && timeMechanic.showExtraMarks && opacity > 0) {
+    opacity *= timeValues.extraMarkOpacity;
+    if (timeMechanic.showExtraMarks && opacity > 0) {
         drawTimeSkyStrokes(g, world, timeValues, opacity);
         drawTimeStarHighlights(g, world, timeValues, opacity);
     }
@@ -88,7 +89,6 @@ function drawTimeOriginalStars(g, world, timeValues) {
         if (star.type !== 'small' || !star.timeStrokes) continue;
         // 例如 2.5：前两颗完整显现，第三颗显现一半。
         let visibility = Math.max(0, Math.min(1, timeValues.visibleStars - starNumber));
-        if (!timeMechanic.enabled) visibility = 1;
         starNumber++;
         if (visibility <= 0) continue;
         for (const mark of star.timeStrokes) {

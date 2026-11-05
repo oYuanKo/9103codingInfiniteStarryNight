@@ -1,6 +1,6 @@
 // Optional team boundary. No renderer/graph/cache references leave this closure.
-const { StarryNight, publishGroupFrameV2, queueGroupPortalV2 } = (() => {
-    const listeners = { frame: new Set(), universe: new Set(), portal: new Set() };
+const { StarryNight, publishGroupFrameV2, queueGroupPortalV2, publishGroupResetV2 } = (() => {
+    const listeners = { frame: new Set(), universe: new Set(), portal: new Set(), reset: new Set() };
     const ids = new WeakMap();
     let nextId = 1, previousUniverse = null;
     let previousPointer = null, pointerSpeed = 0;
@@ -94,6 +94,14 @@ const { StarryNight, publishGroupFrameV2, queueGroupPortalV2 } = (() => {
     function queuePortal(phase, tr, outcome = null) {
         if (listeners.portal.size) portalEvents.push(Object.freeze({ phase, outcome, ...portalCopy(tr) }));
     }
+    function publishReset() {
+        // Old navigation events must never advance audio after a full restart.
+        portalEvents = [];
+        previousPointer = null;
+        pointerSpeed = 0;
+        previousUniverse = null;
+        emit('reset', getState());
+    }
     function publishFrame(dt) {
         const events = portalEvents; portalEvents = [];
         if (!listeners.frame.size && !listeners.universe.size && !listeners.portal.size) {
@@ -118,7 +126,8 @@ const { StarryNight, publishGroupFrameV2, queueGroupPortalV2 } = (() => {
             setFlowStrength: value => setParameter('strength', value, 30),
             onFrame: callback => subscribe('frame', callback),
             onUniverseChanged: callback => subscribe('universe', callback),
+            onReset: callback => subscribe('reset', callback),
             onPortal: callback => subscribe('portal', callback) }),
-        publishGroupFrameV2: publishFrame, queueGroupPortalV2: queuePortal
+        publishGroupFrameV2: publishFrame, queueGroupPortalV2: queuePortal, publishGroupResetV2: publishReset
     };
 })();
