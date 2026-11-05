@@ -327,8 +327,10 @@ const detachAudioModuleV1 = (() => {
         if (event.phase !== 'end' || event.outcome !== 'completed') return;
         applyTimeMusicRate(bridge.getState());
         if (event.direction === 'in') sceneDepth++;
-        else if (event.direction === 'out') sceneDepth = Math.max(0, sceneDepth - 1);
-        changeSceneTrack(Math.min(sceneDepth, 2));
+        else if (event.direction === 'out') sceneDepth--;
+        // Signed depth preserves the song on return, including worlds outside the root.
+        // Root = track 1; inward = 2,3,1...; outward = 3,2,1... .
+        changeSceneTrack(((sceneDepth % tracks.length) + tracks.length) % tracks.length);
     });
 
     const offFrame = bridge.onFrame((dt, state) => {
