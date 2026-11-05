@@ -130,6 +130,12 @@ These links identify the artwork and document APIs used in the implementation. T
 
 **[TEAM TO CONFIRM: add any tutorials, external examples, borrowed/adapted code or other visual references actually used during development. For each, link the original source and explain the relevant file/function and changes made. Documentation links above do not replace those credits.]**
 
+### Code Structures
+
+https://github.com/tyshkovskii/reviewing-code-modularity-skill/blob/main/SKILL.md
+
+https://github.com/lx-wnk/skills/blob/main/skills/component-review/SKILL.md
+
 ### Audio assets
 
 | File | Use | Creator, source and licence |
