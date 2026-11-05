@@ -180,8 +180,6 @@ https://github.com/tyshkovskii/reviewing-code-modularity-skill/blob/main/SKILL.m
 
 https://github.com/lx-wnk/skills/blob/main/skills/component-review/SKILL.md
 
-**Audio references:
-
 ### Audio assets
 
 | File | Use |
@@ -191,7 +189,5 @@ https://github.com/lx-wnk/skills/blob/main/skills/component-review/SKILL.md
 | `assets/scene-02.wav` | Second scene's looping music |
 | `assets/scene-03.mp3` | Third and deeper scenes' looping music |
 | `assets/starfield-transition.wav` | Portal transition cue |
-
-For each asset, add its title, creator, original source link, licence or permission, and any editing performed. If it is original or AI-generated, state who made it and how. The credits for an older, removed transition cue should not be applied to these current files.
 
 For repeatable seeded development, call `restartPaintingV2(seed)` explicitly (for example 12, 89 or 205). Q/W/E are no longer user controls. `StarryNight.onReset(callback)` reports a full restart after the new world is ready; stale portal events are discarded.
