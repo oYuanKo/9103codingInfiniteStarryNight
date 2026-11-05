@@ -3,6 +3,38 @@ let timeWorldId = null;
 let timePreviousFlow = null;
 let timeSkipNextFrame = false;
 let timeCalmPreview = new TimeMechanic();
+const timeOffAppearance = {starBrightness: 0.2, strokeGap: 36, visibleStars: 12, extraMarkOpacity: 0};
+let timeDisplay = {...timeOffAppearance};
+let timeDisplayTransition = null;
+
+function setTimeEffectEnabled(enabled) {
+    if (timeMechanic.enabled === enabled) return;
+    timeDisplayTransition = {from: {...timeDisplay}, elapsed: 0};
+    timeMechanic.enabled = enabled;
+    timeWorldId = null;
+    if (enabled) timeMechanic.reset();
+}
+
+function updateTimeDisplay(elapsedMilliseconds, state) {
+    const target = timeMechanic.enabled ? {
+        starBrightness: timeMechanic.starBrightness,
+        strokeGap: timeMechanic.strokeGap,
+        visibleStars: timeMechanic.visibleStars,
+        extraMarkOpacity: 1
+    } : timeOffAppearance;
+    if (!timeDisplayTransition) { timeDisplay = {...target}; return; }
+    // Blend appearance only; the existing 34-second curve remains unchanged.
+    if (!state.flow.paused && state.flow.enabled && !state.portal && !state.loading &&
+        !document.hidden && !timeSkipNextFrame && Number.isFinite(elapsedMilliseconds)) {
+        timeDisplayTransition.elapsed += Math.max(0, elapsedMilliseconds);
+    }
+    const progress = Math.min(1, timeDisplayTransition.elapsed / 600);
+    const weight = (1 - Math.cos(progress * Math.PI)) / 2;
+    for (const key of Object.keys(timeOffAppearance)) {
+        timeDisplay[key] = lerp(timeDisplayTransition.from[key], target[key], weight);
+    }
+    if (progress === 1) timeDisplayTransition = null;
+}
 
 // 回到页面时，不把后台停留的时间一次算进去。
 document.addEventListener('visibilitychange', function () {
@@ -19,6 +51,8 @@ function updateTimeMechanic(elapsedMilliseconds, state) {
             timePreviousFlow = null;
         }
         timeWorldId = null;
+        updateTimeDisplay(elapsedMilliseconds, state);
+        timeSkipNextFrame = false;
         return;
     }
 
@@ -37,6 +71,7 @@ function updateTimeMechanic(elapsedMilliseconds, state) {
     } else {
         advanceTimeIfPlaying(elapsedMilliseconds, state);
     }
+    updateTimeDisplay(elapsedMilliseconds, state);
     timeSkipNextFrame = false;
 
     // Time 传入速度、融合量和起步位移；方向、颜色和笔触仍来自原画。
@@ -60,12 +95,14 @@ function advanceTimeIfPlaying(elapsedMilliseconds, state) {
 // The shader now transports and exposes Time paint together with the base paint.
 function getTimePaintLayers(parentWorld, portal) {
     if (!portal) {
-        const parent = drawTimePaintLayer(0, parentWorld, timeMechanic);
+        const parent = drawTimePaintLayer(0, parentWorld, timeDisplay);
         return {parent, child: parent};
     }
     const leavingChild = nestedV2.transition.direction === 'out';
-    const parentTime = leavingChild ? timeCalmPreview : timeMechanic;
-    const childTime = leavingChild ? timeMechanic : timeCalmPreview;
+    const destinationTime = timeMechanic.enabled
+        ? {...timeCalmPreview, extraMarkOpacity: 1} : timeOffAppearance;
+    const parentTime = leavingChild ? destinationTime : timeDisplay;
+    const childTime = leavingChild ? timeDisplay : destinationTime;
     // Preserve the existing extra-mark exit/entry windows during navigation.
     // Original small stars follow the shader's structure transition, once only.
     return {

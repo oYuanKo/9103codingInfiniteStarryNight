@@ -7,6 +7,17 @@ const paintingPresentationV2 = (() => {
         canvas.elt.setAttribute('aria-label', 'Infinite Starry Night interactive painting');
         const help = document.getElementById('painting-help');
         const button = document.getElementById('help-toggle');
+        const timeButton = document.getElementById('time-toggle');
+        const syncTimeButton = () => {
+            timeButton.textContent = timeMechanic.enabled ? 'Stop Time' : 'Start Time';
+            timeButton.setAttribute('aria-pressed', String(timeMechanic.enabled));
+        };
+        const toggleTime = () => {
+            setTimeEffectEnabled(!timeMechanic.enabled);
+            syncTimeButton();
+        };
+        timeButton.addEventListener('click', toggleTime);
+        syncTimeButton();
         let timer;
         const show = visible => {
             help.hidden = !visible;
@@ -26,7 +37,7 @@ const paintingPresentationV2 = (() => {
         window.addEventListener('resize', resize);
         resize(); show(true);
         timer = setTimeout(() => show(false), 12000);
-        cleanup = () => { clearTimeout(timer); button.removeEventListener('click', toggle); window.removeEventListener('resize', resize); };
+        cleanup = () => { timeButton.removeEventListener('click', toggleTime); clearTimeout(timer); button.removeEventListener('click', toggle); window.removeEventListener('resize', resize); };
         paintingPresentationV2.toggle = toggle;
     }
     return { init, toggle() {}, dispose() { cleanup?.(); cleanup = null; } };

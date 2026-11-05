@@ -48,7 +48,7 @@ const timeKeyframes = [
 
 class TimeMechanic {
     constructor() {
-        this.enabled = true;
+        this.enabled = false;
         this.showExtraMarks = true;
         this.reset();
     }

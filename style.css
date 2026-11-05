@@ -4,7 +4,10 @@ body { font: 12px/1.5 Arial, sans-serif; overflow: hidden; }
   align-items: center; justify-content: center; gap: 12px; }
 #artwork canvas { display: block; }
 #presentation-guide { width: min(800px, calc(100% - 32px)); height: 82px; text-align: center; }
-#help-toggle { font: inherit; color: #cfcaac; border: 1px solid #394453; border-radius: 3px;
+#help-toggle, #time-toggle { font: inherit; color: #cfcaac; border: 1px solid #394453; border-radius: 3px;
   background: transparent; padding: 3px 10px; cursor: pointer; }
-#help-toggle:hover, #help-toggle:focus-visible { color: #fff2cf; border-color: #a59b77; }
+#help-toggle:hover, #help-toggle:focus-visible, #time-toggle:hover, #time-toggle:focus-visible { color: #fff2cf; border-color: #a59b77; }
 #painting-help { margin: 8px 0 0; }
+
+#time-toggle { margin-right: 8px; }
+#time-toggle[aria-pressed="true"] { background: #26374a; border-color: #a59b77; color: #fff2cf; }
