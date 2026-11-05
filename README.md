@@ -36,7 +36,7 @@ The painting starts with normal flow and Time off. Select **Start Time** to watc
 
 | Member | Main mechanic and contribution |
 |---|---|
-| **Yuan** | **Perlin Noise & Randomness**, plus user input, cursor-centred zoom and nested-world navigation. Developed the painterly core, shader flow, brush detail and star-hover light. Also worked on shared integration and later Time-layer/blending refinements. |
+| **Yuan Kuang** | **Perlin Noise & Randomness**, plus user input, cursor-centred zoom and nested-world navigation. Developed the painterly core, shader flow, brush detail and star-hover light. Also worked on shared integration and later Time-layer/blending refinements. |
 | **Qingyang Fang** | **Audio-based interactions**. **[TO BE COMPLETED BY QINGYANG FANG]** |
 | **Yang Wu** | **Time-based effects and transitions**. Developed the Time cycle, changing small stars and sky highlights, and their integration with the shared painting. Also connected Space to the Audio module and repaired gaps in the painted vortex. |
 
@@ -116,11 +116,11 @@ This README was initially generated with AI assistance and is to be reviewed and
 
 [ChatGPT](https://chatgpt.com/overview/) and [Codex](https://openai.com/codex/) from OpenAI were used to help with difficult features and improve code quality, as recorded in the project's earlier README. AI also assisted in consolidating this README from the repository documentation and current code.
 
-- **Yuan:** **[TEAM TO CONFIRM: identify the tools used, the specific features/files they helped with, what code or suggestions were adopted, and how that work was checked.]** The core techniques are explained above; this note is needed to identify which parts were AI-assisted accurately.
+- **Yuan Kuang:** **[TEAM TO CONFIRM: identify the tools used, the specific features/files they helped with, what code or suggestions were adopted, and how that work was checked.]** The core techniques are explained above; this note is needed to identify which parts were AI-assisted accurately.
 - **Qingyang Fang:** **[TO BE COMPLETED BY QINGYANG FANG]**
-- **Yang Wu:** the existing acknowledgement states that ChatGPT/Codex assisted with the Time implementation, shared pause and vortex fix. The Time code uses an elapsed-time clock, keyframe interpolation and saved paint layers. The shared pause stores playing sounds and remaining timer durations so they resume from the same place. The vortex repair adjusts existing brush geometry to fill the centre gap. **[TEAM TO CONFIRM: add the exact assistance received and review/testing performed, including any other AI use.]**
+- **Yang Wu:** the existing acknowledgement states that ChatGPT/Codex assisted with the Time implementation, shared pause and vortex fix. The Time code uses an elapsed-time clock, keyframe interpolation and saved paint layers. The shared pause stores playing sounds and remaining timer durations so they resume from the same place. The vortex repair adjusts existing brush geometry to fill the centre gap. 
 
-**[TEAM TO CONFIRM: all members should check that this statement covers the full development process, any AI-generated media and this documentation. Add any required prompt or conversation references.]**
+
 
 ## References and asset credits
 
