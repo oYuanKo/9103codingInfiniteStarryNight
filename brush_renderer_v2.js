@@ -399,8 +399,13 @@ function* buildBrushV2Steps(seed, preservePrevious = false) {
 
 function fillBrushSkyGapRow(g, y) {
     // get() 取邻近颜料色，再沿流向补一小笔；放大时也会重画同一笔。
+    // Read an unchanged scanline once instead of one canvas readback per pixel.
+    // Refresh after every painted stroke: later samples must see earlier paint.
+    const canReadRow = g.pixelDensity() === 1;
+    let row = canReadRow ? g.drawingContext.getImageData(0, y, width, 1).data : null;
     for (let x = 4; x < width - 4; x++) {
-        const pixel = g.get(x, y);
+        const offset = x * 4;
+        const pixel = row ? row.subarray(offset, offset + 4) : g.get(x, y);
         if (pixel[0] > 16 || pixel[1] > 32 || pixel[2] > 64) continue;
         if (brushV2.cypress && pointInCypress(x, y, brushV2.cypress)) continue;
         const neighbours = [g.get(x - 4, y), g.get(x + 4, y),
@@ -415,6 +420,7 @@ function fillBrushSkyGapRow(g, y) {
         if (count === 0) continue;
         for (let channel = 0; channel < 3; channel++) colour[channel] /= count;
         paintV2Stroke(g, x, y, brushV2Angle(x, y), 4, 3, colour);
+        if (canReadRow) row = g.drawingContext.getImageData(0, y, width, 1).data;
     }
 }
 

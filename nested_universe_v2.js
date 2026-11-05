@@ -1,7 +1,7 @@
 // Nodes own resources; edges own navigation. Seeds are not world identities.
 const nestedV2 = {
     current: null, nodes: new Set(), transition: null, pending: null,
-    preload: null, clock: 0, cacheLimit: 8
+    preload: null, entryIntent: null, clock: 0, cacheLimit: 8
 };
 
 function captureWorldV2(seed = universeSeed) {
@@ -143,6 +143,7 @@ function maybePreloadChildV2() {
 
 // Only one generator runs at a time: the existing seeded random stream stays intact.
 function updateChildPreloadV2() {
+    updateEntryIntentV2();
     const job = nestedV2.preload;
     if (job) {
         const active = captureWorldV2();
@@ -207,11 +208,31 @@ function requestPortalV2(edge, direction, delta) {
     if (nestedV2.pending && edge.parent.world && edge.child.world) beginPortalV2(nav);
 }
 
+// Keep deliberate inward wheel depth while the camera approaches its limit.
+// Bind intent to both the current world and the star; never retarget silently.
+function updateEntryIntentV2() {
+    const intent = nestedV2.entryIntent;
+    if (!intent) return;
+    if (nestedV2.current !== intent.node || nestedV2.transition || nestedV2.pending ||
+        !brushCursor.inside || v2Camera.targetZoom < v2Camera.maxZoom - 0.001 ||
+        findZoomStarV2(mouseX, mouseY)?.id !== intent.star.id) {
+        nestedV2.entryIntent = null;
+        return;
+    }
+    if (v2Camera.zoom < v2Camera.maxZoom - 0.01) return;
+    nestedV2.entryIntent = null;
+    requestPortalV2(childEdgeV2(intent.star), 'in', intent.delta);
+}
+
 function tryEnterStarV2(sx, sy, delta = -100) {
-    if (v2Camera.targetZoom < v2Camera.maxZoom - 0.001 || v2Camera.zoom < v2Camera.maxZoom - 0.01) return false;
+    if (delta >= 0 || v2Camera.targetZoom < v2Camera.maxZoom - 0.001) return false;
     const star = findZoomStarV2(sx, sy);
-    if (!star) return false;
-    requestPortalV2(childEdgeV2(star), 'in', delta);
+    if (!star) { nestedV2.entryIntent = null; return false; }
+    const node = currentWorldNodeV2();
+    const previous = nestedV2.entryIntent;
+    const accumulated = previous?.node === node && previous.star.id === star.id ? previous.delta : 0;
+    nestedV2.entryIntent = { node, star, delta: accumulated + delta };
+    updateEntryIntentV2();
     return true;
 }
 
@@ -250,6 +271,8 @@ function beginPortalV2(nav) {
 }
 
 function handleStarEntryWheelV2(delta) {
+    // Reversing cancels uncommitted entry and resumes ordinary zoom.
+    if (delta > 0) nestedV2.entryIntent = null;
     const tr = nestedV2.transition;
     const pending = nestedV2.pending;
     if (!tr && !pending) return false;
@@ -334,6 +357,7 @@ function drawStarEntryV2() {
 }
 
 function resetNestedV2() {
+    nestedV2.entryIntent = null;
     if (nestedV2.transition) queueGroupPortalV2('end', nestedV2.transition, 'reset');
     currentWorldNodeV2();
     clearChildPreloadV2();
@@ -348,6 +372,7 @@ function resetNestedV2() {
 }
 
 function resetNestedCameraV2() {
+    nestedV2.entryIntent = null;
     if (nestedV2.transition) finishPortalV2(nestedV2.transition.direction === 'out');
     nestedV2.pending = null;
     v2Camera.reset();
