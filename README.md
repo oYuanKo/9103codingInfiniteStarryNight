@@ -159,7 +159,11 @@ This statement describes AI use in my own contribution and my later changes to s
 
 ChatGPT/Codex was used as a supplementary tool during development. It helped refine code comments, improve variable and function descriptions, and clarify the structure of the audio interaction logic.
 
-The audio concept, mechanic design, implementation and final integration were developed and reviewed by the team.
+### My creative direction and decisions
+
+This immersive *Starry Night* design links audio to user spatial navigation to maintain the painting’s dreamlike tone. I let audio govern overall visual presentation, and added dedicated transition sound effects for scene transitions. Three music tracks shift with movement depth, with adjustable tempo modes and shortcut keys for intuitive control. Using Web‑Audio FFT analysis, I map music frequencies to subtle visual deformations of the village and cypress tree, constraining effects to preserve original artwork shapes. 
+
+Reactions rely mainly on pre‑composed background audio; transition audio triggers separate scene shifts instead of feeding into visual frequency analysis. Browser autoplay and protocol limitations are handled with suitable fallbacks for stable cross‑platform performance.
 
 
 
@@ -192,11 +196,11 @@ https://github.com/lx-wnk/skills/blob/main/skills/component-review/SKILL.md
 
 ### Audio assets
 
-| File | Use |
-|---|---|
-| `assets/scene-01.mp3` | First scene's looping music |
-| `assets/scene-02.wav` | Second scene's looping music |
-| `assets/scene-03.mp3` | Third track in the repeating three-track world-depth cycle |
-| `assets/starfield-transition.wav` | Portal transition cue |
+| File | Use | Source | 
+|---|---|---|
+| `assets/scene-01.mp3` | First scene's looping music | [https://opengameart.org/content/remembering-something-i-forgot](https://opengameart.org/content/remembering-something-i-forgot) |
+| `assets/scene-02.wav` | Second scene's looping music | [https://opengameart.org/content/now-or-never-0](https://opengameart.org/content/now-or-never-0) | 
+| `assets/scene-03.mp3` | Third track in the repeating three-track world-depth cycle | [https://opengameart.org/content/trying-something-new](https://opengameart.org/content/trying-something-new) |
+| `assets/starfield-transition.wav` | Portal transition cue | [https://opengameart.org/content/cave-theme](https://opengameart.org/content/cave-theme) |
 
 For repeatable seeded development, call `restartPaintingV2(seed)` explicitly (for example 12, 89 or 205). Q/W/E are no longer user controls. `StarryNight.onReset(callback)` reports a full restart after the new world is ready; stale portal events are discarded.
