@@ -10,6 +10,18 @@ The viewer can disturb the flow with the mouse, awaken light around a star, and 
 
 The picture is generated from brushstrokes rather than displayed as a downloaded painting image. Each world has a seeded layout, so we can return to the same composition while its animation continues to change.
 
+## How to open and run
+
+Use a current desktop browser with WebGL support and an internet connection (p5.js loads from a CDN). Run the project through a local web server so the music-driven visual effects work.
+
+1. On this repository's **Code** tab, select the **main** branch, then click the green **Code** button → **Download ZIP**.
+2. Extract the ZIP and open the extracted project folder, usually `9103codingInfiniteStarryNight-main`. Find the folder containing `index.html`; keep the JavaScript files, `style.css` and `assets` folder together.
+3. Open Terminal (macOS/Linux) or PowerShell (Windows). Type `cd "FULL_PATH_TO_PROJECT_FOLDER"`, replacing the quoted placeholder with the full path to the folder containing `index.html`, then press Enter.
+4. With **Python 3 installed**, run `python3 -m http.server 8000 --bind 127.0.0.1` on macOS/Linux, or `py -3 -m http.server 8000 --bind 127.0.0.1` on Windows. If Python is not installed, install Python 3 from the official Python website first, or use an existing local web-server tool to serve this same folder.
+5. Keep the terminal open and visit **http://localhost:8000/** in your browser. Wait for the painting to appear, then click it to unlock sound if needed. Press **Ctrl+C** in the terminal when finished to stop the server.
+
+Avoid opening `index.html` by double-clicking: `file://` uses direct audio playback without the FFT-driven visual response. An HTTPS-hosted copy also supports these effects.
+
 ## How to interact
 
 The painting starts with normal flow and Time off. Select **Start Time** to watch its 34-second cycle, or explore immediately with the mouse.
