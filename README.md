@@ -183,8 +183,8 @@ https://github.com/lx-wnk/skills/blob/main/skills/component-review/SKILL.md
 
 ### Audio assets
 
-| File | Use | Creator, source and licence |
-|---|---|---|
+| File | Use |
+|---|---|
 [Audio material](https://opengameart.org/)
 | `assets/scene-01.mp3` | First scene's looping music |
 | `assets/scene-02.wav` | Second scene's looping music |
