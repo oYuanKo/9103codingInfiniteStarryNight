@@ -1,6 +1,4 @@
-// BGM-only frequency response. Original mapping/shader; API reference:
-// https://www.w3.org/TR/webaudio-1.1/#AnalyserNode
-// No oscillator, random animation, microphone or second media source.
+// AI acknowledgement (Yuan): Generated and revised for Yuan with OpenAI ChatGPT and its coding tools. It analyses BGM frequency bands, smooths their levels and maps them to village light and cypress bending/brightness. 
 const AudioPaintingV2 = (() => {
     const bands = [[60, 250], [300, 2400], [3500, 10000]];
     const values = [0, 0, 0];
@@ -50,15 +48,17 @@ const AudioPaintingV2 = (() => {
             lights.splice(i * 4, 4, h.x, h.baseY - h.h * 0.45, h.w * 0.22 * (i % 3 === 1 ? [0.78, 0.9, 1.08, 0.86][i % 4] : 1), h.h * 0.3 * (i % 3 === 1 ? 0.82 : 1));
         }
         const bounds = [Infinity, Infinity, -Infinity, -Infinity];
-        for(let i=0;i<48;i+=4) if(lights[i+2]>0) {
-            bounds[0]=Math.min(bounds[0],lights[i]-lights[i+2]*3);
-            bounds[1]=Math.min(bounds[1],lights[i+1]-lights[i+3]*3);
-            bounds[2]=Math.max(bounds[2],lights[i]+lights[i+2]*3);
-            bounds[3]=Math.max(bounds[3],lights[i+1]+lights[i+3]*3);
+        for (let i = 0; i < 48; i += 4) if (lights[i + 2] > 0) {
+            bounds[0] = Math.min(bounds[0], lights[i] - lights[i + 2] * 3);
+            bounds[1] = Math.min(bounds[1], lights[i + 1] - lights[i + 3] * 3);
+            bounds[2] = Math.max(bounds[2], lights[i] + lights[i + 2] * 3);
+            bounds[3] = Math.max(bounds[3], lights[i + 1] + lights[i + 3] * 3);
         }
-        const result = { tree: c ? [c.baseX, c.baseY, c.height, c.width] : [0, 0, 1, 0], lights,
-            bounds: houses.length ? bounds : [0,0,0,0] };
-        if(world.village) geometryCache.set(world.village,result);
+        const result = {
+            tree: c ? [c.baseX, c.baseY, c.height, c.width] : [0, 0, 1, 0], lights,
+            bounds: houses.length ? bounds : [0, 0, 0, 0]
+        };
+        if (world.village) geometryCache.set(world.village, result);
         return result;
     }
     return { attach, update, reset, levels, geometry, values };

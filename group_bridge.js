@@ -1,4 +1,3 @@
-// Optional team boundary. No renderer/graph/cache references leave this closure.
 const { StarryNight, publishGroupFrameV2, queueGroupPortalV2, publishGroupResetV2 } = (() => {
     const listeners = { frame: new Set(), universe: new Set(), portal: new Set(), reset: new Set() };
     const ids = new WeakMap();

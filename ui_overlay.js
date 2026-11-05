@@ -1,3 +1,4 @@
+// AI acknowledgement (Yuan): Responsive canvas presentation and Start/Stop Time controls was generated and revised for Yuan with OpenAI ChatGPT and its coding tools.
 // Presentation changes CSS dimensions only; p5 maps pointer coordinates itself.
 const paintingPresentationV2 = (() => {
     let cleanup = null;

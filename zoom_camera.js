@@ -1,3 +1,4 @@
+// AI acknowledgement (Yuan): Converting screen/world coordinates and smoothing cursor-centred zoom was generated and revised for Yuan with OpenAI ChatGPT and its coding tools.
 
 class ZoomCameraV2 {
     constructor() {

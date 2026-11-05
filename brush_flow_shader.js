@@ -1,3 +1,4 @@
+// AI acknowledgement (Yuan): Later integration work was generated and revised with OpenAI ChatGPT and its coding tools. It samples paint through a flow field and blends portal, detail, Time and audio layers; the original Time mechanic belongs to its contributor.
 const brushFlowSettings = {
     strength: 5,
     speed: 1.2,

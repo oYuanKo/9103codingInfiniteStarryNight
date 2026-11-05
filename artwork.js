@@ -1,4 +1,4 @@
-// Mountains and cypress, etc.
+// AI acknowledgement (Yuan): Yuan's landscape-generation code was generated and revised with OpenAI ChatGPT and its coding tools. It paints seeded mountains, village houses and cypress geometry, mountains and cypress, etc.
 const MOUNTAIN_PALETTES = [
     // Distant hills: lighter blue
     [

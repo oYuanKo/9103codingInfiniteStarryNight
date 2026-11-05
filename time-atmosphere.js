@@ -1,6 +1,8 @@
 // Paint Time details in world space BEFORE the shared flow/exposure shader.
 // Reuse two surfaces across worlds; never allocate one per animation frame.
 const timePaintBuffers = [];
+// AI acknowledgement (Yuan): Yuan's world-space compositing revision was made with OpenAI ChatGPT and its coding tools. 
+// AI acknowledgement (Yuan): this note does not attribute the original star
 function drawTimePaintLayer(slot, world, timeValues, opacity = 1) {
     let g = timePaintBuffers[slot];
     if (!g || g.width !== width || g.height !== height) {
@@ -19,7 +21,7 @@ function drawTimePaintLayer(slot, world, timeValues, opacity = 1) {
 }
 
 function isTimeStarNearby(stars, x, y, margin) {
-    // 给原画的星星和月亮留出空间，避免补充笔触盖住它们。
+    // Leave space for the stars and moon in the original artwork, and ensure that any added brushstrokes do not cover them.
     for (let i = 0; i < stars.length; i++) {
         let star = stars[i];
         let distance = dist(x, y, star.x, star.y);
@@ -30,16 +32,16 @@ function isTimeStarNearby(stars, x, y, margin) {
 }
 
 function drawTimeSkyStrokes(g, world, timeValues, opacity) {
-    // 只画上方天空和树的右侧，不覆盖山、村庄或柏树。
-    // 固定起点，每隔一笔保留基础笔触，中间的笔触随密度逐渐淡入。
-    // 不直接改变循环步长，避免原有笔触随着密度变化滑动或跳位。
+    // Draw only the sky above and the right side of the trees, without obscuring the mountains, villages, or cypress trees.
+    // Fix the starting point; retain the base strokes at regular intervals, while allowing the intermediate strokes to gradually fade in based on density.
+    // Do not directly alter the loop step size, so as to prevent the existing strokes from shifting or jumping as the density changes.
     const density = (36 - timeValues.strokeGap) / 18;
     for (let row = 0; row < 5; row++) {
         for (let mark = 0; mark < 31; mark++) {
             const visibility = mark % 2 === 0 ? 1 : density;
             if (visibility <= 0) continue;
             const x = 240 + mark * 18 + Math.sin(mark * 2.3 + row) * 4;
-            // 每行的基本高度，加上一大一小两次起伏。
+            // The base height for each line, plus two fluctuations—one large and one small.
             let rowHeight = 85 + row * 43;
             let waveAngle = x * 0.012 + row * 0.7;
             let mainWave = Math.sin(waveAngle) * 18;
@@ -61,13 +63,13 @@ function drawTimeSkyStrokes(g, world, timeValues, opacity) {
 function drawTimeStarHighlights(g, world, timeValues, opacity) {
     const stars = world.stars;
     const brightness = timeValues.starBrightness;
-    // 只增加星光笔触的强弱；不把整张画一起调亮。
-    // 原本的主星和月亮始终保留，鼠标悬停光效仍由组员负责。
+    // Increase only the intensity of the starlight brush strokes; do not brighten the entire image.
+    // The original primary stars and the moon must remain unchanged, and the hover-effect (triggered when the mouse is positioned over an element) remains the responsibility of the respective team member.
     for (let i = 0; i < stars.length; i++) {
         let star = stars[i];
         if (star.type === 'small') continue;
         for (let mark = 0; mark < 18; mark++) {
-            // 分散在原有星光内，距离和方向各不相同，不围成同心圆。
+            // Scattered within the existing starlight, at varying distances and in different directions—not forming concentric circles.
             let angle = mark * 2.4 + i * 0.7;
             let radiusVariation = (Math.sin(mark * 4.7 + i) + 1) / 2;
             let radius = star.radius * (0.25 + radiusVariation * 0.95);
@@ -83,16 +85,16 @@ function drawTimeStarHighlights(g, world, timeValues, opacity) {
 }
 
 function drawTimeOriginalStars(g, world, timeValues) {
-    // 重画原有小星的笔触，不再额外生成一套星星。
+    // Redraw the strokes of the existing small stars; do not generate an additional set of stars.
     let starNumber = 0;
     for (const star of world.stars) {
         if (star.type !== 'small' || !star.timeStrokes) continue;
-        // 例如 2.5：前两颗完整显现，第三颗显现一半。
+        // For example, 2.5: the first two are fully visible, while the third is half-visible.
         let visibility = Math.max(0, Math.min(1, timeValues.visibleStars - starNumber));
         starNumber++;
         if (visibility <= 0) continue;
         for (const mark of star.timeStrokes) {
-            // 柏树仍在星光前面；不把被树遮住的笔触补到树上。
+            // The cypress tree remains in front of the starlight; do not add the brushstrokes obscured by the tree onto the tree itself.
             if (world.cypress && pointInCypress(mark.x, mark.y, world.cypress)) continue;
             paintV2Stroke(g, mark.x, mark.y, mark.angle, mark.len, mark.weight,
                 mark.colour, mark.alpha * visibility);

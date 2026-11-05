@@ -1,4 +1,4 @@
-// Active input routing; event priority is unchanged.
+// AI acknowledgement (Yuan): Keyboard controls and reversible wheel navigation was generated and revised for Yuan with OpenAI ChatGPT and its coding tools.
 function handlePaintingKeyV2(event) {
   if (event?.target?.closest('input, textarea, select, [contenteditable="true"]')) return;
   if (key === 'h' || key === 'H') { paintingPresentationV2.toggle(); return; }
