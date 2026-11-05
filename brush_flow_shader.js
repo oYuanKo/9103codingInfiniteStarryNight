@@ -1,6 +1,8 @@
 const brushFlowSettings = {
     strength: 5,
     speed: 1.2,
+    timeBlend: 0, // Optional Time module: exposure window across the existing motion cycle.
+    restartOffset: 0,
     paused: false,
     enabled: true,
 
@@ -110,6 +112,8 @@ uniform vec2 u_resolution;
 uniform float u_time;
 uniform float u_strength;
 uniform float u_speed;
+uniform vec2 u_timeBlend;
+uniform vec2 u_restartOffset;
 
 uniform vec2 u_cursor;
 uniform float u_cursorRadius;
@@ -210,7 +214,7 @@ vec4 detailedPaint(sampler2D paint, sampler2D a, sampler2D b,
 vec4 samplePainting(sampler2D paint, sampler2D flow, vec2 point,
                     vec3 camera, float time,
                     sampler2D detailA, sampler2D detailB, vec4 rectA, vec4 rectB, vec4 weights,
-                    vec2 morphDirection, float morph, float reflectEdges) {
+                    vec2 morphDirection, float morph, float reflectEdges, float exposure, float restartOffset) {
   vec2 uv = clamp(point / u_resolution, vec2(0.0), vec2(1.0));
   vec2 screen = vTexCoord * u_resolution;
   vec2 localScale = cameraScale(screen, camera, reflectEdges);
@@ -311,7 +315,25 @@ vec4 samplePainting(sampler2D paint, sampler2D flow, vec2 point,
     vec2(0.999)
   );
 
-  return detailedPaint(paint, detailA, detailB, rectA, rectB, weights, displacedUV, camera.z);
+  vec4 movingPaint = detailedPaint(paint, detailA, detailB, rectA, rectB, weights, displacedUV, camera.z);
+  // Skip extra samples while the exposure offset is still below a visible pixel.
+  if (exposure < .0001 || u_flowEnabled <= 0.0) return movingPaint;
+
+  // Average 16 positions along the existing motion.
+  // Widening the exposure merges moving pigment instead of fading to a still image.
+  // Keep the same flow direction, terrain protection, cursor and screen-space cap.
+  vec4 exposedPaint = vec4(0.0);
+  for (int i = 0; i < 16; i++) {
+    float sampleTime = (float(i) + .5) / 16.0 - .5;
+    float samplePhase = phase + sampleTime * exposure * 6.283185;
+    // Restart carries the fused paint along its flow before individual strokes return.
+    vec2 sampleOffset = direction * (sin(samplePhase) + restartOffset) * u_strength * localStrength;
+    sampleOffset *= min(1.0, max(6.0, u_strength) / max(length(sampleOffset * localScale), .001));
+    vec2 sampleUV = uv - (sampleOffset + cursorOffset) * u_flowEnabled / u_resolution;
+    exposedPaint += detailedPaint(paint, detailA, detailB, rectA, rectB, weights,
+      clamp(sampleUV, vec2(.001), vec2(.999)), camera.z);
+  }
+  return exposedPaint / 16.0;
 }
 
 void main() {
@@ -331,12 +353,12 @@ void main() {
   float phase = u_progress * u_portalActive;
   if (phase <= 0.0) {
     gl_FragColor = samplePainting(u_paint, u_flowMap, parentPoint, u_camera, u_time,
-      u_detailA, u_detailB, u_detailRectA, u_detailRectB, u_detailWeights, vec2(0.0), 0.0, 0.0);
+      u_detailA, u_detailB, u_detailRectA, u_detailRectB, u_detailWeights, vec2(0.0), 0.0, 0.0, u_timeBlend.x, u_restartOffset.x);
     return;
   }
   if (phase >= 1.0) {
     gl_FragColor = samplePainting(u_childPaint, u_childFlow, childPoint, u_childCamera, u_childTime,
-      u_childDetailA, u_childDetailB, u_childDetailRectA, u_childDetailRectB, u_childDetailWeights, vec2(0.0), 0.0, 0.0);
+      u_childDetailA, u_childDetailB, u_childDetailRectA, u_childDetailRectB, u_childDetailWeights, vec2(0.0), 0.0, 0.0, u_timeBlend.y, u_restartOffset.y);
     return;
   }
   vec2 parentFlow = texture2D(u_flowMap, clamp(parentPoint/u_resolution, 0.0, 1.0)).rg * 2.0 - 1.0;
@@ -361,9 +383,9 @@ void main() {
   float structure = smoothstep(arrival-.02,arrival+.20,phase);
   vec2 blendedFlow = turnFlow(parentFlow, childFlow, depth);
   vec4 parent = samplePainting(u_paint, u_flowMap, parentPoint, u_camera, u_time,
-    u_detailA, u_detailB, u_detailRectA, u_detailRectB, u_detailWeights, blendedFlow, depth, 0.0);
+    u_detailA, u_detailB, u_detailRectA, u_detailRectB, u_detailWeights, blendedFlow, depth, 0.0, u_timeBlend.x, u_restartOffset.x);
   vec4 child = samplePainting(u_childPaint, u_childFlow, childPoint, u_childCamera, u_childTime,
-    u_childDetailA, u_childDetailB, u_childDetailRectA, u_childDetailRectB, u_childDetailWeights, blendedFlow, 1.0-depth, 1.0);
+    u_childDetailA, u_childDetailB, u_childDetailRectA, u_childDetailRectB, u_childDetailWeights, blendedFlow, 1.0-depth, 1.0, u_timeBlend.y, u_restartOffset.y);
   // Transport child colour along its flow before resolving its composition.
   // Flow-aligned samples transfer chroma before restoring child luminance/contrast.
   vec2 spread = normalize(childFlow+vec2(.00001))*vec2(24.0)/u_resolution;
@@ -506,7 +528,8 @@ function drawBrushFlowShader(present = true, camera = null, portal = null) {
     if (!brushV2.base || !brushFlowProgram) return;
     camera = camera || { x: 0, y: 0, zoom: 1 };
     if (brushFlowSettings.enabled && !brushFlowSettings.paused) {
-        const dt = Math.min(deltaTime, 33) * 0.001;
+        // Accumulate travel at the current speed to avoid a phase jump; default 1.2 is unchanged.
+        const dt = Math.min(deltaTime, 33) * 0.001 * brushFlowSettings.speed / 1.2;
         brushFlowTime += dt;
         if (portal) portal.child.flowTime = (portal.child.flowTime || 0) + dt;
         updateBrushCursor();
@@ -520,13 +543,19 @@ function drawBrushFlowShader(present = true, camera = null, portal = null) {
     ]);
     const parentDetail = brushDetailUniformsV2(parentWorld, camera);
     const childDetail = portal ? brushDetailUniformsV2(child, childCamera) : parentDetail;
+    const timeBlend = brushFlowSettings.timeBlend || 0;
+    const restartOffset = brushFlowSettings.restartOffset || 0;
+    // The world being left keeps its Time pose; the destination starts fresh.
+    const leavingChild = portal && nestedV2.transition && nestedV2.transition.direction === 'out';
     const uniforms = {
         u_paint: brushV2.base, u_flowMap: brushFlowMap,
         u_childPaint: child.base, u_childFlow: child.flowMap,
         u_resolution: [width, height], u_time: brushFlowTime,
         u_childTime: portal ? child.flowTime || 0 : brushFlowTime,
         u_seed: universeSeed,
-        u_strength: brushFlowSettings.strength, u_speed: brushFlowSettings.speed,
+        u_strength: brushFlowSettings.strength, u_speed: 1.2,
+        u_timeBlend: leavingChild ? [0, timeBlend] : [timeBlend, portal ? 0 : timeBlend],
+        u_restartOffset: leavingChild ? [0, restartOffset] : [restartOffset, portal ? 0 : restartOffset],
         u_flowEnabled: brushFlowSettings.enabled ? 1 : 0,
         u_detailA: parentDetail.a, u_detailB: parentDetail.b,
         u_detailRectA: parentDetail.rectA, u_detailRectB: parentDetail.rectB, u_detailWeights: parentDetail.weights,

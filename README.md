@@ -23,6 +23,70 @@ Users can explore different layers of the artwork by zooming in, moving from the
 | Yang Wu / `time-based` | Time-based Effects & Transitions |
 
 
+## Time-based mechanic — Yang Wu
+
+My part changes the rhythm of the painting over time. The sky starts slowly,
+then builds up to faster movement before the brushstrokes blend together and
+clear movement returns.
+
+The Time cycle lasts 34 seconds. One smooth curve controls the
+whole speed cycle: a long gentle opening, a gradual build-up, a brief rounded
+peak near 30 seconds lasting about 2.6 seconds near its highest speed, then
+movement settles to rest before gently starting again.
+
+The movement reaches zero when blending is strongest. The same picture then
+starts moving slowly; clarity and sky strokes return towards their
+initial state as that movement builds, rather than on a separate fade timer.
+
+The moon and main stars remain in place. The original small stars gradually
+appear in their original positions, using their original brushstrokes. Their
+home positions and the seeded world layout stay unchanged. The small-star
+brushstrokes and sky highlights follow the painting's flow clock, direction and
+strength. Their movement settles during blending and starts gently with the paint.
+
+Small stars begin appearing after eight seconds, at uneven intervals averaging
+2.4 seconds. They keep appearing during acceleration, then wait 1.5 seconds
+before leaving at uneven intervals averaging 0.8 seconds. The timing is chosen
+on reset, and the exit continues into the next loop.
+
+### Code structure
+
+- `time-mechanic.js` uses one clock to calculate speed, exposure, star visibility and stroke density.
+- `time-atmosphere.js` draws the saved small-star strokes and the changing sky highlights.
+- `time-integration.js` connects Time to the group's renderer, camera and pause controls.
+- `brush_renderer_v2.js` saves the small-star strokes separately so Time can reveal them.
+- `brush_flow_shader.js` averages moving paint samples to create the exposure effect.
+
+Time uses elapsed time from the existing draw loop. The `timeKeyframes` array
+stores the speed, blending and restart movement at chosen times. A custom
+function joins these values with repeated `lerp()` calls. Star fades use a
+cosine progress curve, and `Math.random()` chooses the uneven intervals once
+on reset. These combine the course's arrays, loops, interpolation and maths;
+the shared shader and world-navigation code are reused from the group project.
+
+### How to try it
+
+Watch the painting for about 35 seconds to see the full cycle. Click the painting once to start music.
+
+- **Space:** pause or continue the Time cycle, flow and music.
+- **F:** turn flow off or on. Time also pauses while flow is off.
+- **Scroll:** zoom and move between worlds.
+- **Q / W / E:** change the world and start the cycle again from Calm.
+
+Time pauses while a world is loading or a transition is happening. If the
+transition is cancelled, the cycle continues from where it stopped. When the
+world changes, the cycle starts again. It also pauses while the browser tab is hidden.
+
+I also connected Space with Qingyang Fang's Audio module so the picture, music
+and transition sounds pause together and continue from the same place. The music
+keeps its own scene and mouse controls.
+
+I also noticed a small dark gap in the centre of the sky vortex. I widened the
+existing centre brushstroke to fill it, and checked that the flow animation,
+zoom and star navigation still worked correctly.
+
+**AI acknowledgement:** ChatGPT/Codex assisted with my Time implementation, shared pause and vortex fix.
+
 ## GitHub 使用指南
 
 ### 1. 下载项目（第一次）
