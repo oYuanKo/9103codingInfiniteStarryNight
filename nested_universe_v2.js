@@ -26,7 +26,9 @@ function childSeedV2(parentSeed, starId) {
 }
 
 function newWorldNodeV2(seed, world = null) {
-    const node = { seed, world, parent: null, children: new Map(), used: ++nestedV2.clock };
+    // Captured entry worlds keep their original composition, even after eviction.
+    // Newly discovered inner and outer worlds use the same seeded layout rules.
+    const node = { seed, world, variedStars: !world, parent: null, children: new Map(), used: ++nestedV2.clock };
     nestedV2.nodes.add(node);
     return node;
 }
@@ -121,7 +123,7 @@ function clearChildPreloadV2() {
 function prepareWorldV2(node) {
     if (node.world || nestedV2.preload?.node === node) return;
     clearChildPreloadV2();
-    nestedV2.preload = { node, phase: 'painting', steps: buildBrushV2Steps(node.seed, true),
+    nestedV2.preload = { node, phase: 'painting', steps: buildBrushV2Steps(node.seed, true, node.variedStars),
         world: { seed: node.seed, base: null, motion: null, marks: [], stars: [],
             village: null, cypress: null, time: 0, flowMap: null, flowTime: 0, detailSource: null } };
 }

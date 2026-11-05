@@ -24,13 +24,25 @@ const paintingPresentationV2 = (() => {
             help.hidden = !visible;
             button.setAttribute('aria-expanded', String(visible));
             button.textContent = visible ? 'Hide guide' : 'Interaction guide';
+            resize();
         };
         const toggle = () => { clearTimeout(timer); show(help.hidden); };
         const resize = () => {
-            // Native 800x600 on ordinary windows (also existing test viewports).
-            // Large presentation displays can grow; small windows scale down.
-            const cap = innerWidth >= 1280 && innerHeight >= 900 ? 1440 : 800;
-            const w = Math.max(4, Math.floor(Math.min(cap, innerWidth - 32, (innerHeight - 116) * 4 / 3) / 4) * 4);
+            // Help never changes canvas size or position. Narrow layouts scroll
+            // the explanation below the painting instead of covering/shrinking it.
+            const cap = innerWidth >= 1280 && innerHeight >= 900 ? 1440 : 960;
+            const w = Math.max(4, Math.floor(Math.min(cap, innerWidth - 32,
+                (innerHeight - 70) * 4 / 3) / 4) * 4);
+            const presentation = document.getElementById('presentation');
+            const panel = document.getElementById('interaction-guide');
+            const footer = document.getElementById('presentation-guide');
+            const side = innerWidth >= w + 2 * (260 + 24) + 32;
+            presentation.dataset.guideSide = String(side);
+            presentation.style.setProperty('--painting-width', w + 'px');
+            presentation.style.setProperty('--painting-height', w * .75 + 'px');
+            if (side && button.parentElement !== panel) panel.prepend(button);
+            if (!side && button.parentElement !== footer) footer.append(button);
+            panel.hidden = !side && help.hidden;
             canvas.elt.style.width = w + 'px';
             canvas.elt.style.height = w * .75 + 'px';
         };
