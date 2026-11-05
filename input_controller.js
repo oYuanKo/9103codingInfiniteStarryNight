@@ -2,16 +2,10 @@
 function handlePaintingKeyV2(event) {
   if (event?.target?.closest('input, textarea, select, [contenteditable="true"]')) return;
   if (key === 'h' || key === 'H') { paintingPresentationV2.toggle(); return; }
-  if (key === ' ' && event?.target?.closest('button')) return;
+  // Leave Space/Enter to native button activation; neither pauses globally.
 
   if (key === "f" || key === "F") {
-    brushFlowSettings.enabled =
-      !brushFlowSettings.enabled;
-  }
-
-  if (key === " ") {
-    brushFlowSettings.paused =
-      !brushFlowSettings.paused;
+    if (!event?.repeat) brushFlowSettings.paused = !brushFlowSettings.paused;
   }
 
   if (key === "[") {

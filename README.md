@@ -24,10 +24,9 @@ Start by watching the painting for about 35 seconds, then explore it with the mo
 | Scroll outward | Zooms out. At the minimum zoom, keep scrolling to move into the parent world. An outer world can also be generated from the starting world. |
 | Reverse scrolling during a portal transition | Reverses the transition. Scrolling back to its starting boundary cancels it. |
 | Click the painting | Starts or unlocks audio if the browser has blocked autoplay. |
-| **Space** | Pauses or resumes paint flow, the Time cycle and music, including transition sounds. Navigation controls remain available. |
-| **F** | Turns paint flow off or on. The Time cycle also pauses while flow is off; this is separate from the shared music pause. |
-| **C** | Toggles cursor disturbance and star-hover light. |
-| **[ / ]** | Decreases or increases flow strength. |
+| **F** | Pauses or resumes paint flow, the Time cycle and music, including transition sounds. Navigation controls remain available. |
+| **C** | Toggles cursor disturbance and star-hover light. Developer only, not shown in guidance for user |
+| **[ / ]** | Decreases or increases flow strength. Developer only, not shown in guidance for user |
 | **R** | Restarts the original world (seed 12), clears navigation, resets the camera and Time, resumes normal flow, and restarts the first music track. |
 | **H** or the guide button | Shows or hides the interaction guide. |
 

@@ -198,8 +198,8 @@ const detachAudioModuleV1 = (() => {
     }
 
     function syncPauseFromKey(event) {
-        if (disposed || event.key !== ' ' || event.repeat) return;
-        if (event.target?.closest('button, input, textarea, select, [contenteditable="true"]')) return;
+        if (disposed || event.key?.toLowerCase() !== 'f' || event.repeat) return;
+        if (event.target?.closest('input, textarea, select, [contenteditable="true"]')) return;
         const state = bridge.getState();
         // Resume inside the actual key gesture so the browser allows first play.
         // Input still owns flow.paused; onFrame confirms its state after the key.
