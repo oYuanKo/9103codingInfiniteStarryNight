@@ -89,17 +89,19 @@ function disposeWorldV2(world) {
     }
 }
 
-function trimWorldCacheV2() {
+function trimWorldCacheV2(reserve = nestedV2.preload ? 1 : 0) {
     const protectedNodes = new Set();
-    for (let node = nestedV2.current; node; node = node.parent?.parent) protectedNodes.add(node);
+    // Keep graph ancestry, not all its heavyweight paintings.
+    if (nestedV2.current) protectedNodes.add(nestedV2.current);
     for (const nav of [nestedV2.transition, nestedV2.pending]) {
         if (nav) { protectedNodes.add(nav.edge.parent); protectedNodes.add(nav.edge.child); }
     }
     const cached = [...nestedV2.nodes].filter(node => node.world);
     cached.sort((a, b) => a.used - b.used);
-    // Reserve one reusable neighbour even when deep ancestry exceeds the budget.
-    // Otherwise a completed speculative child would be evicted/rebuilt every frame.
-    const limit = Math.max(nestedV2.cacheLimit, protectedNodes.size + 1);
+    // The in-flight world occupies one slot too; reserve BEFORE its first allocation.
+    // Three slots accommodate both portal endpoints plus one speculative neighbour.
+    const budget = Number.isFinite(nestedV2.cacheLimit) ? Math.max(3, Math.floor(nestedV2.cacheLimit)) : 8;
+    const limit = budget - reserve;
     let count = cached.length;
     for (const node of cached) {
         if (count <= limit) break;
@@ -123,6 +125,7 @@ function clearChildPreloadV2() {
 function prepareWorldV2(node) {
     if (node.world || nestedV2.preload?.node === node) return;
     clearChildPreloadV2();
+    trimWorldCacheV2(1);
     nestedV2.preload = { node, phase: 'painting', steps: buildBrushV2Steps(node.seed, true, node.variedStars),
         world: { seed: node.seed, base: null, motion: null, marks: [], stars: [],
             village: null, cypress: null, time: 0, flowMap: null, flowTime: 0, detailSource: null } };

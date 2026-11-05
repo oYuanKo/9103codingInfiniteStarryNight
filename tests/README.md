@@ -83,3 +83,32 @@ The refined tree warp transports its silhouette with a smooth narrow background
 margin; it has no independent oscillation. Four of twelve village lights use
 muted cream/ochre colours and varied sizes; compact soft support stays inside
 the existing house bodies. Tree high-frequency glow is unchanged.
+
+### Bounded drawing-resource cache (cache-clearance)
+
+`node tests/cache.node.cjs` checks 80-level eviction/revisit identity, saved
+animation clocks, in-flight reservation, protected portal endpoints, texture
+release, and legacy/shader generation equivalence for three seeds.
+`navigation.browser.cjs` now checks 12-level bounded ancestry instead of
+requiring every ancestor drawing to remain resident.
+
+The default limit is eight world drawing-resource slots, including an in-flight
+build. Current and active navigation endpoints are protected; graph nodes, seeds,
+cameras and return links survive eviction. Returning to an evicted world rebuilds
+its painting. This bounds drawing resources, not all graph metadata or total heap
+bytes. Detail atlases retain their separate existing budget.
+
+Shader worlds no longer allocate the unused motion canvas or 650 legacy marks.
+The legacy renderer remains opt-in; equivalent random draws preserve the random
+stream. Time-specific strokes are unaffected.
+
+Validation: all nine Node suites passed. A separate local Chrome diagnostic using
+real p5 generation/rendering entered 12 levels and returned all 12, observed a peak
+of eight drawing slots including generation, and verified regenerated pixels,
+flow maps, detail records, star/house/tree geometry and node identity. Three seeds
+also matched the pre-change builder byte-for-byte and produced identical subsequent
+random values. Cancellation and partial-build disposal passed. Diagnostic navigation
+was API-driven, not a substitute for the full native-wheel Playwright suite.
+Standalone Playwright suites remain unexecuted because the package is unavailable.
+Cold reconstruction adds generation work; the resource bound does not promise
+zero-latency return or a measured frame-rate improvement.

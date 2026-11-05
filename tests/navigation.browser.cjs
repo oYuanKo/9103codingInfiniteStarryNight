@@ -115,7 +115,7 @@ const root = path.resolve(__dirname, '..');
     console.log('PASS cursor motion, seed reset during portal, R cancels outward portal');
     // Resource stress uses the same generators/state machine, with controlled frame stepping.
     const stress = await page.evaluate(() => {
-      noLoop(); resetNestedV2(); universeSeed=12; initBrushV2(12); rebuildBrushFlowMap(); v2Camera.reset();
+      noLoop(); resetNestedV2(); universeSeed=12; initBrushV2(12,false,false); rebuildBrushFlowMap(); v2Camera.reset();
       const root=currentWorldNodeV2();
       const paintHash = world => {
         const data=world.base.drawingContext.getImageData(0,0,width,height).data;
@@ -137,25 +137,28 @@ const root = path.resolve(__dirname, '..');
       for(const id of ['major-0','major-1','major-2','major-3','major-4']){entry(id);leave();}
       const evicted=first.world===null;
       entry('moon');const restored=nestedV2.current===first&&paintHash(first.world)===hash;
-      entry('major-0');entry('major-1');entry('major-2');
-      let pinned=true;for(let n=nestedV2.current;n;n=n.parent?.parent)pinned&&=!!n.world;
+      for(let depth=0;depth<12;depth++)entry('moon');
+      let ancestorsEvicted=false;for(let n=nestedV2.current.parent?.parent;n;n=n.parent?.parent)ancestorsEvicted ||= !n.world;
+      const bounded=[...nestedV2.nodes].filter(n=>n.world).length<=3;
+      const deep=nestedV2.current;leave();entry('moon');
+      const sameDeep=nestedV2.current===deep;
       const neighbour=childEdgeV2(brushV2.stars[0]).child;
       prepareWorldV2(neighbour);drain();trimWorldCacheV2();
       const neighbourWorld=neighbour.world;prepareWorldV2(neighbour);
       const noThrash=!!neighbourWorld&&neighbour.world===neighbourWorld&&!nestedV2.preload;
       const textureCount=brushFlowBuffer._renderer.textures.size;
       resetNestedV2();const cleanTextures=brushFlowBuffer._renderer.textures.size;
-      universeSeed=12;initBrushV2(12);rebuildBrushFlowMap();v2Camera.reset();nestedV2.cacheLimit=8;
+      universeSeed=12;initBrushV2(12,false,false);rebuildBrushFlowMap();v2Camera.reset();nestedV2.cacheLimit=8;
       currentWorldNodeV2();
       // Cancel a partially allocated child job; the active flow map must survive.
       const activeFlow=brushFlowMap,activeBase=brushV2.base;
       startChildPreloadV2(brushV2.stars[0]);updateChildPreloadV2();clearChildPreloadV2();
       const activeSafe=brushFlowMap===activeFlow&&brushV2.base===activeBase&&activeBase.width===width;
-      loop();return {evicted,restored,pinned,textureCount,cleanTextures,activeSafe,noThrash};
+      loop();return {evicted,restored,ancestorsEvicted,bounded,sameDeep,textureCount,cleanTextures,activeSafe,noThrash};
     });
-    assert.equal(stress.evicted,true);assert.equal(stress.restored,true);assert.equal(stress.pinned,true);
+    assert.equal(stress.evicted,true);assert.equal(stress.restored,true);assert.equal(stress.ancestorsEvicted,true);assert(stress.bounded&&stress.sameDeep);
     assert.equal(stress.cleanTextures,0);assert.equal(stress.activeSafe,true);assert.equal(stress.noThrash,true);
-    console.log('PASS cache eviction, pixel-identical regeneration, ancestor pinning, partial-job disposal:',stress);
+    console.log('PASS cache eviction, pixel-identical regeneration, bounded deep ancestry and identity, partial-job disposal:',stress);
     await canvas.screenshot({path:path.join(outputDir,'step6c.png')});
     console.log('Resources:', await page.evaluate(()=>({cached:[...nestedV2.nodes].filter(n=>n.world).length,graphics:document.querySelectorAll('canvas').length,textures:brushFlowBuffer._renderer.textures.size})));
     assert.deepEqual(errors,[]);

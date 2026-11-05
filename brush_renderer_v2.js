@@ -278,7 +278,7 @@ function paintV2Stroke(g, x, y, angle, len, weight, colour, alpha = 255) {
 
 
 // Generate the complete painted world
-function* buildBrushV2Steps(seed, preservePrevious = false, variedStars = false) {
+function* buildBrushV2Steps(seed, preservePrevious = false, variedStars = false, legacyMotion = false) {
     randomSeed(seed);
     noiseSeed(seed);
 
@@ -290,10 +290,10 @@ function* buildBrushV2Steps(seed, preservePrevious = false, variedStars = false)
     }
 
     brushV2.base = createGraphics(width, height);
-    brushV2.motion = createGraphics(width, height);
+    brushV2.motion = legacyMotion ? createGraphics(width, height) : null;
 
     brushV2.base.pixelDensity(1);
-    brushV2.motion.pixelDensity(1);
+    brushV2.motion?.pixelDensity(1);
 
     brushV2.base.background(12, 28, 60);
     brushV2.detailSource = newBrushDetailSourceV2(seed);
@@ -369,7 +369,11 @@ function* buildBrushV2Steps(seed, preservePrevious = false, variedStars = false)
     paintBrushCypress(brushV2.base);
 
 
-    // Living brush marks keep stable home positions
+    // Shader mode preserves seven RNG draws per legacy mark without retaining objects.
+    if (!legacyMotion) {
+        for (let i = 0; i < BRUSH_V2_SETTINGS.movingCount * 7; i++) random();
+    } else {
+    // Legacy renderer retains its original motion layer and marks.
     for (let i = 0; i < BRUSH_V2_SETTINGS.movingCount; i++) {
         const x = random(width);
         const y = random(height);
@@ -387,6 +391,8 @@ function* buildBrushV2Steps(seed, preservePrevious = false, variedStars = false)
         });
 
         yield;
+    }
+
     }
 
     for (let y = 4; y < height * 0.6; y++) {
@@ -424,10 +430,13 @@ function fillBrushSkyGapRow(g, y) {
     }
 }
 
-function initBrushV2(seed, preservePrevious = false) {
+// Keep the legacy synchronous entry point compatible; the app opts out explicitly.
+function initBrushV2(seed, preservePrevious = false, legacyMotion = true) {
     const steps = buildBrushV2Steps(
         seed,
-        preservePrevious
+        preservePrevious,
+        false,
+        legacyMotion
     );
 
     // Preserve the existing synchronous behaviour
