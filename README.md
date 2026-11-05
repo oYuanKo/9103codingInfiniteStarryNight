@@ -1,183 +1,172 @@
-# 9103codingInfiniteStarryNight
-Creative coding major project (Final)
 # Infinite Starry Night 🌌
 
-## Project Overview
+Creative Coding major project | p5.js, JavaScript and WebGL
 
-**Course:** Creative Coding  
-**Artwork:** *The Starry Night* – Vincent van Gogh  
-**Platform:** p5.js (JavaScript)
+> Review draft for `main` at `78490ce6`. Resolve the **[TEAM TO CONFIRM]** notes and the sections left for Qingyang Fang before using this as the final submission README.
 
-Our project reinterprets Van Gogh's *The Starry Night* as an interactive and dynamic artwork.
+## Overview and inspiration
 
-Through generative visuals, sound, and time-based changes, we aim to bring the painting to life and create an immersive experience.
+Our project reinterprets Vincent van Gogh's [*The Starry Night* (1889)](https://www.moma.org/collection/works/79802) as an interactive painting. We keep the blue and yellow palette, curved brush marks, bright stars, moon, village and cypress, then use code to give the painted sky movement and depth.
 
-Users can explore different layers of the artwork by zooming in, moving from the night sky into space and stars, creating a journey through interconnected worlds.
+The viewer can disturb the flow with the mouse, awaken light around a star, and scroll into that star to discover another painted world. Sound responds to exploration, while a repeating Time cycle changes the painting's movement, starlight and density. The idea is to extend the feeling of movement in the original painting into an experience the viewer can explore.
 
-## Team Responsibilities
+The picture is generated from brushstrokes rather than displayed as a downloaded painting image. Each world has a seeded layout, so we can return to the same composition while its animation continues to change.
 
-| Member / Branch | Main Responsibility |
+## Run the project
+
+Use a desktop browser with WebGL, a mouse or trackpad, and a keyboard. The current entry point is `index.html`.
+
+1. Download the repository, or clone it:
+
+   ```bash
+   git clone https://github.com/oYuanKo/9103codingInfiniteStarryNight.git
+   cd 9103codingInfiniteStarryNight
+   ```
+
+2. Serve the project folder through a local HTTP server. For example, if Python 3 is installed:
+
+   ```bash
+   python3 -m http.server 8000
+   ```
+
+3. Open `http://localhost:8000` and click the painting to start music.
+
+There is no build step. `index.html` loads **p5.js 1.11.11 from cdnjs**, so this version needs an internet connection for that script. Serving over HTTP also enables the Web Audio processing path. Opening the file directly uses a simpler audio fallback and is not the recommended way to run it.
+
+## How to interact
+
+Start by watching the painting for about 35 seconds, then explore it with the mouse.
+
+| Control | What it does |
 |---|---|
-| Yuan / `yuan` | Perlin Noise & Randomness + User Input (Zoom & Navigation) |
-| Qingyang Fang / `audio` | Audio-based Interactions |
-| Yang Wu / `time-based` | Time-based Effects & Transitions |
+| Move the mouse over the painting | Disturbs nearby paint flow. Faster movement also increases the music's playback rate. |
+| Hover over a major star or the moon | Gradually spreads extra light made from brushstrokes. The music grows louder with the light. Small stars are not portals or hover-light targets. |
+| Scroll inward | Zooms towards the pointer. At the normal zoom limit, keep the pointer over a major star or the moon and continue scrolling to enter its world. |
+| Scroll outward | Zooms out. At the minimum zoom, keep scrolling to move into the parent world. An outer world can also be generated from the starting world. |
+| Reverse scrolling during a portal transition | Reverses the transition. Scrolling back to its starting boundary cancels it. |
+| Click the painting | Starts or unlocks audio if the browser has blocked autoplay. |
+| **Space** | Pauses or resumes paint flow, the Time cycle and music, including transition sounds. Navigation controls remain available. |
+| **F** | Turns paint flow off or on. The Time cycle also pauses while flow is off; this is separate from the shared music pause. |
+| **C** | Toggles cursor disturbance and star-hover light. |
+| **[ / ]** | Decreases or increases flow strength. |
+| **R** | Resets the camera in the current world and cancels an unfinished portal. |
+| **Q / W / E** | Rebuilds the world using seed 12, 89 or 205, and restarts the Time cycle. |
+| **H** or the guide button | Shows or hides the interaction guide. |
 
+Audio may need an initial click, key press or wheel gesture. If the guide button has keyboard focus, Space activates that button instead of the painting's pause control. The Time cycle pauses during world loading, portal transitions and hidden browser tabs. A cancelled portal resumes the previous cycle; a completed world change starts a new cycle.
 
-## Time-based mechanic — Yang Wu
+## Team responsibilities
 
-My part changes the rhythm of the painting over time. The sky starts slowly,
-then builds up to faster movement before the brushstrokes blend together and
-clear movement returns.
-
-The Time cycle lasts 34 seconds. One smooth curve controls the
-whole speed cycle: a long gentle opening, a gradual build-up, a brief rounded
-peak near 30 seconds lasting about 2.6 seconds near its highest speed, then
-movement settles to rest before gently starting again.
-
-The movement reaches zero when blending is strongest. The same picture then
-starts moving slowly; clarity and sky strokes return towards their
-initial state as that movement builds, rather than on a separate fade timer.
-
-The moon and main stars remain in place. The original small stars gradually
-appear in their original positions, using their original brushstrokes. Their
-home positions and the seeded world layout stay unchanged. The small-star
-brushstrokes and sky highlights follow the painting's flow clock, direction and
-strength. Their movement settles during blending and starts gently with the paint.
-
-Small stars begin appearing after eight seconds, at uneven intervals averaging
-2.4 seconds. They keep appearing during acceleration, then wait 1.5 seconds
-before leaving at uneven intervals averaging 0.8 seconds. The timing is chosen
-on reset, and the exit continues into the next loop.
-
-### Code structure
-
-- `time-mechanic.js` uses one clock to calculate speed, exposure, star visibility and stroke density.
-- `time-atmosphere.js` draws the saved small-star strokes and the changing sky highlights.
-- `time-integration.js` connects Time to the group's renderer, camera and pause controls.
-- `brush_renderer_v2.js` saves the small-star strokes separately so Time can reveal them.
-- `brush_flow_shader.js` averages moving paint samples to create the exposure effect.
-
-Time uses elapsed time from the existing draw loop. The `timeKeyframes` array
-stores the speed, blending and restart movement at chosen times. A custom
-function joins these values with repeated `lerp()` calls. Star fades use a
-cosine progress curve, and `Math.random()` chooses the uneven intervals once
-on reset. These combine the course's arrays, loops, interpolation and maths;
-the shared shader and world-navigation code are reused from the group project.
-
-### How to try it
-
-Watch the painting for about 35 seconds to see the full cycle. Click the painting once to start music.
-
-- **Space:** pause or continue the Time cycle, flow and music.
-- **F:** turn flow off or on. Time also pauses while flow is off.
-- **Scroll:** zoom and move between worlds.
-- **Q / W / E:** change the world and start the cycle again from Calm.
-
-Time pauses while a world is loading or a transition is happening. If the
-transition is cancelled, the cycle continues from where it stopped. When the
-world changes, the cycle starts again. It also pauses while the browser tab is hidden.
-
-I also connected Space with Qingyang Fang's Audio module so the picture, music
-and transition sounds pause together and continue from the same place. The music
-keeps its own scene and mouse controls.
-
-I also noticed a small dark gap in the centre of the sky vortex. I widened the
-existing centre brushstroke to fill it, and checked that the flow animation,
-zoom and star navigation still worked correctly.
-
-**AI acknowledgement:** ChatGPT/Codex assisted with my Time implementation, shared pause and vortex fix.
-
-## GitHub 使用指南
-
-### 1. 下载项目（第一次）
-
-```bash
-git clone https://github.com/oYuanKo/9103codingInfiniteStarryNight.git
-cd 9103codingInfiniteStarryNight
-```
-
-### 2. 创建自己的 Branch（第一次）
-
-```bash
-git switch -c 自己的名字
-git push -u origin 自己的名字
-```
-
-每个人在自己的 branch 开发，不要直接修改 `main`。
-
-### 3. 开始写代码前（同步 main）
-
-```bash
-git switch main
-git pull --ff-only origin main
-git switch 自己的名字
-git merge main
-```
-
-### 4. 写完代码后（上传修改）
-
-```bash
-git add .
-git commit -m "描述本次修改"
-git push
-```
-
-### 5. 合并到 Main
-
-在 GitHub 网站上创建 **Pull Request**：
-
-`自己的 branch → main`
-
-检查后点击 **Merge pull request**。
-
-### Useful Commands
-
-| Command | Description |
+| Member | Main mechanic and contribution |
 |---|---|
-| `git branch` | 查看本地分支 |
-| `git switch 分支名` | 切换分支 |
-| `git status` | 查看修改状态 |
-| `git pull` | 拉取当前分支的最新代码 |
-| `git push` | 上传已提交的修改 |
+| **Yuan** | **Perlin Noise & Randomness**, plus user input, cursor-centred zoom and nested-world navigation. Developed the painterly core, shader flow, brush detail and star-hover light. Also worked on shared integration and later Time-layer/blending refinements. |
+| **Qingyang Fang** | **Audio-based interactions**. **[TO BE COMPLETED BY QINGYANG FANG]** |
+| **Yang Wu** | **Time-based effects and transitions**. Developed the Time cycle, changing small stars and sky highlights, and their integration with the shared painting. Also connected Space to the Audio module and repaired gaps in the painted vortex. |
 
-## 文件调用说明
+These are the main responsibilities, not exclusive ownership of every shared file. Audio, Time and the core painting work together through the same application. Yang's shared audio-pause work and Yuan's later Time-rendering refinements build on the relevant mechanic owner's implementation.
 
-### 如何接入自己的模块
+## Techniques and technical decisions
 
-请尽量把自己的功能写在独立 JS 文件里，不要直接改复杂的 Camera、Portal、Brush Detail 或 Shader 内部逻辑。`group_bridge.js` 已提供以下实际接口，模块应在它加载后使用：
+### 1. Perlin Noise and Randomness: building the painting
 
-- `StarryNight.getState()`：读取当前状态；未就绪时 `ready` 为 false。
-- `StarryNight.setFlowSpeed(value)` / `StarryNight.setFlowStrength(value)`：设置允许调整的 Flow 参数；接受有限数字，分别限制在 0–3 / 0–30。
-- `StarryNight.onFrame(callback)`：接收每帧的 `(dt, state)`。
-- `StarryNight.onUniverseChanged(callback)`：接收含 `previous`、`current` 的世界变化事件。
-- `StarryNight.onPortal(callback)`：接收过渡事件，包含 `phase`、进度等信息。
+**Main responsibility: Yuan**
 
-以上订阅方法都会返回取消订阅函数。最简单的例子：
+`brush_renderer_v2.js` builds the sky from curved brush marks. Perlin noise gives neighbouring positions related directions and colours, while random variation changes individual marks' position, length, width and tone. This keeps neighbouring strokes related without making every mark identical. A separate vortex influence bends the directions around the centre of the sky. `artwork.js` adds the landscape, village and cypress.
 
-```javascript
-const unsubscribe = StarryNight.onFrame((dt, state) => {
-  if (!state.ready) return;
-  // 在这里更新自己的模块；dt 的单位是毫秒。
-});
-// 不再需要时调用 unsubscribe();
-```
+Both `randomSeed()` and `noiseSeed()` are set when a world is generated. The same seed and generation conditions reproduce the base composition. A child world's seed is derived from its parent seed and the selected star ID, so a particular entrance has a stable destination. The navigation graph stores the actual parent-child relationship separately from these seeds.
 
-`onFrame` 在当前帧绘制完成后执行，修改通常影响下一帧。若要画新的图层，请先和组员协调一个安全的绘制调用位置，不要重新定义全局 `draw()`；状态订阅接口并不等同于图层绘制接口。
+The painting is drawn into an offscreen buffer and reused. A direction texture stores horizontal direction, vertical direction and local movement strength in its colour channels. In `brush_flow_shader.js`, the fragment shader reads this texture and shifts where it samples the painted image over time. The main animation therefore does not need to redraw every original brushstroke each frame. Lower movement weights around important forms help keep the composition recognisable.
 
-### 一起开发时的小约定
+### 2. User input, nested worlds and close-up detail
 
-先同步最新 `main`，再在自己的分支开发；尽量只修改自己模块的 JS 文件。改 `index.html`、`app_controller.js`、`group_bridge.js`、`brush_flow_shader.js` 等共享文件前先沟通，不直接覆盖别人的实现。测试后创建 Pull Request，经检查再合入 `main`。已有 `v3` 工作继续保留，之后单独审查和集成，不要用 `main` 替换它。
+**Main responsibility: Yuan**
 
-详细接口和测试见 [GROUP_INTEGRATION.md](GROUP_INTEGRATION.md)；开发过程见 [开发历史](docs/DEVELOPMENT_HISTORY.md)，未采用的实验保存在 [实验档案](experiments/cosmic_threshold/README.md)。
+`zoom_camera.js` converts between screen and painting coordinates. Zoom is centred on the pointer, so the area being explored stays near the cursor. Normal camera zoom runs from 1× to 3×. Continuing inward over a major star or the moon starts a portal into a child painting; continuing outward at 1× opens the parent world.
 
+`nested_universe_v2.js` keeps world nodes, navigation links and saved cameras. Portal progress comes from wheel input, so the viewer can stop or reverse the transition. The shader gradually combines the colours, structure and flow of the two paintings. This is a 2D rendering technique, not a physical 3D scene or a one-to-one morph between individual strokes.
 
-## Notes
+New worlds are generated in small steps across frames and cached for reuse. When zoomed in, `brush_detail_v2.js` replays recorded brush geometry into local high-resolution textures, then adds two levels of smaller brush marks. This preserves painted detail better than enlarging the base image alone. `star_hover_light_v2.js` adds temporary light strokes that grow during a hover and fade after the pointer leaves, without changing the world's seed.
 
-- Always work on your own branch.
-- Pull and merge the latest `main` before starting new work.
-- Keep individual features in separate `.js` files where possible.
-- Use Pull Requests to merge completed features into `main`.
-- Communicate before editing shared files such as `sketch.js`.
+The title describes the feeling of continuing into connected worlds. Detail has finite levels, and cached ancestors can use more memory as exploration goes deeper.
 
-## Use of AI Statement:
-ChatGPT (OpenAI) and Codex were used to improve code quality; help with difficult features;
+### 3. Audio-based interactions
+
+**Main responsibility: Qingyang Fang**
+
+**[TO BE COMPLETED BY QINGYANG FANG]**
+
+### 4. Time: changing the painting's rhythm
+
+**Main responsibility: Yang Wu**
+
+The Time mechanic repeats over **34 seconds**. It begins gently, gradually accelerates, reaches a short rounded peak near 30 seconds, then settles to rest as the paint blending becomes strongest. The same painting starts moving again slowly. Its clarity and sky highlights return with the restarting movement rather than through a separate fade timer.
+
+The moon and main stars keep their positions. Small stars appear using their saved original brushstrokes and home positions. They begin appearing after eight seconds at uneven intervals averaging 2.4 seconds. After a 1.5-second wait following the appearance sequence, they leave at uneven intervals averaging 0.8 seconds. Their exit continues into the beginning of the next loop. The intervals are chosen on reset, not randomised on every frame.
+
+Three files organise this mechanic:
+
+- `time-mechanic.js` uses one elapsed-time clock and a `timeKeyframes` array to calculate speed, paint blending, restart movement, star visibility and sky-stroke density.
+- `time-atmosphere.js` draws saved small-star strokes and additional sky highlights.
+- `time-integration.js` connects these values and paint layers to the existing renderer, world state and pause controls.
+
+Repeated `lerp()` calls join the keyframe values into smooth curves. Cosine easing softens star fades. `Math.random()` creates uneven star timings without advancing the p5 random sequence used to generate the painting. These choices combine arrays, loops, interpolation and maths while keeping the base composition stable.
+
+The shared shader combines samples of moving paint to create the exposure/blending effect. The small stars and extra sky strokes use the painting's flow direction, strength and clock so they settle and restart with the rest of the paint. Yang developed the Time mechanic and its integration; Yuan's later shared-renderer work refined how these Time layers move and blend with the base painting.
+
+## Code structure and collaboration
+
+There is one p5 application, with one `setup()` and `draw()` entry point in `sketch.js`.
+
+| Files | Purpose |
+|---|---|
+| `index.html`, `style.css`, `ui_overlay.js` | Script loading, presentation and interaction guide |
+| `sketch.js`, `app_controller.js`, `input_controller.js` | p5 callbacks, frame order and input routing |
+| `brush_renderer_v2.js`, `artwork.js` | Base brush painting and landscape |
+| `brush_flow_shader.js`, `brush_detail_v2.js` | Animated paint sampling, portal blending and close-up detail |
+| `zoom_camera.js`, `nested_universe_v2.js` | Camera, world generation, navigation and cache |
+| `star_hover_light_v2.js` | Interactive light around major stars and the moon |
+| `group_bridge.js` | Shared state and frame, portal and world-change events |
+| `audio_module.js`, `assets/` | Music, transition sound and audio processing |
+| `time-mechanic.js`, `time-atmosphere.js`, `time-integration.js` | Time calculations, Time paint layers and integration |
+
+For group development, keep separate features in their own files where possible, sync with `main` before starting work, and use a feature branch and pull request. Coordinate changes to shared files rather than replacing another member's implementation. Do not create another global p5 `draw()` function. Bridge subscriptions return cleanup functions, and `onFrame` receives elapsed milliseconds and a state snapshot after drawing.
+
+See [GROUP_INTEGRATION.md](GROUP_INTEGRATION.md) for the bridge API and existing browser-test instructions. [DEVELOPMENT_HISTORY.md](docs/DEVELOPMENT_HISTORY.md) records the earlier core iterations. [PRODUCTION_RELEASE.md](docs/PRODUCTION_RELEASE.md), [legacy/](legacy/README.md) and the [cosmic experiments](experiments/cosmic_threshold/README.md) describe older releases or archived approaches, not additional modes in the current application. In particular, older notes saying Audio or Time is still pending predate their integration.
+
+## AI acknowledgement
+
+This README was initially generated with AI assistance and is to be reviewed and edited by each group member.
+
+[ChatGPT](https://chatgpt.com/overview/) and [Codex](https://openai.com/codex/) from OpenAI were used to help with difficult features and improve code quality, as recorded in the project's earlier README. AI also assisted in consolidating this README from the repository documentation and current code.
+
+- **Yuan:** **[TEAM TO CONFIRM: identify the tools used, the specific features/files they helped with, what code or suggestions were adopted, and how that work was checked.]** The core techniques are explained above; this note is needed to identify which parts were AI-assisted accurately.
+- **Qingyang Fang:** **[TO BE COMPLETED BY QINGYANG FANG]**
+- **Yang Wu:** the existing acknowledgement states that ChatGPT/Codex assisted with the Time implementation, shared pause and vortex fix. The Time code uses an elapsed-time clock, keyframe interpolation and saved paint layers. The shared pause stores playing sounds and remaining timer durations so they resume from the same place. The vortex repair adjusts existing brush geometry to fill the centre gap. **[TEAM TO CONFIRM: add the exact assistance received and review/testing performed, including any other AI use.]**
+
+**[TEAM TO CONFIRM: all members should check that this statement covers the full development process, any AI-generated media and this documentation. Add any required prompt or conversation references.]**
+
+## References and asset credits
+
+### Artwork and technical documentation
+
+These links identify the artwork and document APIs used in the implementation. They do not imply that example code was copied from these pages.
+
+- [Vincent van Gogh, *The Starry Night*, MoMA](https://www.moma.org/collection/works/79802): the visual reference for the palette, composition, stars and painted sky.
+- [p5.js `noise()`](https://p5js.org/reference/p5/noise/): explains the smooth spatial variation used for brush direction, colour and landscape.
+- [p5.js `randomSeed()`](https://p5js.org/reference/p5/randomSeed/) and [`noiseSeed()`](https://p5js.org/reference/p5/noiseSeed/): document the seeded generation used to reconstruct a world's base painting.
+- [p5.js `createShader()`](https://p5js.org/reference/p5/createShader/): documents the GLSL shader interface used for the GPU rendering path.
+- [p5.js `lerp()`](https://p5js.org/reference/p5/lerp/): documents interpolation used in the Time curves and other smooth changes.
+- **Audio references: [TO BE COMPLETED BY QINGYANG FANG]**
+
+**[TEAM TO CONFIRM: add any tutorials, external examples, borrowed/adapted code or other visual references actually used during development. For each, link the original source and explain the relevant file/function and changes made. Documentation links above do not replace those credits.]**
+
+### Audio assets
+
+| File | Use | Creator, source and licence |
+|---|---|---|
+| `assets/scene-01.mp3` | First scene's looping music | **[TO BE COMPLETED BY QINGYANG FANG]** |
+| `assets/scene-02.wav` | Second scene's looping music | **[TO BE COMPLETED BY QINGYANG FANG]** |
+| `assets/scene-03.mp3` | Third and deeper scenes' looping music | **[TO BE COMPLETED BY QINGYANG FANG]** |
+| `assets/starfield-transition.wav` | Portal transition cue | **[TO BE COMPLETED BY QINGYANG FANG]** |
+
+For each asset, add its title, creator, original source link, licence or permission, and any editing performed. If it is original or AI-generated, state who made it and how. The credits for an older, removed transition cue should not be applied to these current files.
