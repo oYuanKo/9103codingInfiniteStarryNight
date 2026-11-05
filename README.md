@@ -36,7 +36,7 @@ The painting starts with normal flow and Time off. Select **Start Time** to watc
 |---|---|
 | **Yuan Kuang** | **Perlin Noise & Randomness**, plus user input, cursor-centred zoom and nested-world navigation. Developed the painterly core, shader flow, brush detail and star-hover light. Also worked on shared integration and later Time-layer/blending refinements. |
 | **Qingyang Fang** | **Audio-based interactions**. My contribution focused on the Audio mechanic, using audio interaction to connect sound with the visual environment. Different soundtracks represent different environments or worlds，audio playback is connected to user interactions and transitions between environments. |
-| **Yang Wu** | **Time-based effects and transitions**. Developed the Time cycle, changing small stars and sky highlights, and their integration with the shared painting. Also connected Space to the Audio module and repaired gaps in the painted vortex. |
+| **Yang Wu** | **Time-based effects and transitions**. Developed the Time cycle, changing small stars and sky highlights, and their integration with the shared painting. Also implemented shared audio pause/resume (originally triggered by Space, now by F) and repaired gaps in the painted vortex. |
 
 These are the main responsibilities, not exclusive ownership of every shared file. Audio, Time and the core painting work together through the same application. Yang's shared audio-pause work and Yuan's later Time-rendering refinements build on the relevant mechanic owner's implementation.
 
@@ -182,10 +182,9 @@ https://github.com/lx-wnk/skills/blob/main/skills/component-review/SKILL.md
 
 | File | Use |
 |---|---|
-[Audio material](https://opengameart.org/)
 | `assets/scene-01.mp3` | First scene's looping music |
 | `assets/scene-02.wav` | Second scene's looping music |
-| `assets/scene-03.mp3` | Third and deeper scenes' looping music |
+| `assets/scene-03.mp3` | Third track in the repeating three-track world-depth cycle |
 | `assets/starfield-transition.wav` | Portal transition cue |
 
 For repeatable seeded development, call `restartPaintingV2(seed)` explicitly (for example 12, 89 or 205). Q/W/E are no longer user controls. `StarryNight.onReset(callback)` reports a full restart after the new world is ready; stale portal events are discarded.
