@@ -186,10 +186,10 @@ https://github.com/lx-wnk/skills/blob/main/skills/component-review/SKILL.md
 | File | Use | Creator, source and licence |
 |---|---|---|
 [Audio material](https://opengameart.org/)
-| `assets/scene-01.mp3` | First scene's looping music | **[TO BE COMPLETED BY QINGYANG FANG]** |
-| `assets/scene-02.wav` | Second scene's looping music | **[TO BE COMPLETED BY QINGYANG FANG]** |
-| `assets/scene-03.mp3` | Third and deeper scenes' looping music | **[TO BE COMPLETED BY QINGYANG FANG]** |
-| `assets/starfield-transition.wav` | Portal transition cue | **[TO BE COMPLETED BY QINGYANG FANG]** |
+| `assets/scene-01.mp3` | First scene's looping music |
+| `assets/scene-02.wav` | Second scene's looping music |
+| `assets/scene-03.mp3` | Third and deeper scenes' looping music |
+| `assets/starfield-transition.wav` | Portal transition cue |
 
 For each asset, add its title, creator, original source link, licence or permission, and any editing performed. If it is original or AI-generated, state who made it and how. The credits for an older, removed transition cue should not be applied to these current files.
 
