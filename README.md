@@ -2,8 +2,6 @@
 
 Creative Coding major project | p5.js, JavaScript and WebGL
 
-> Review draft for `main` at `78490ce6`. Resolve the **[TEAM TO CONFIRM]** notes and the sections left for Qingyang Fang before using this as the final submission README.
-
 ## Overview and inspiration
 
 Our project reinterprets Vincent van Gogh's [*The Starry Night* (1889)](https://www.moma.org/collection/works/79802) as an interactive painting. We keep the blue and yellow palette, curved brush marks, bright stars, moon, village and cypress, then use code to give the painted sky movement and depth.
