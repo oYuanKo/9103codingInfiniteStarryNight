@@ -25,7 +25,6 @@ The painting starts with normal flow and Time off. Select **Start Time** to watc
 | Reverse scrolling during a portal transition | Reverses the transition. Scrolling back to its starting boundary cancels it. |
 | Click the painting | Starts or unlocks audio if the browser has blocked autoplay. |
 | **Start Time / Stop Time** | Start Time begins a fresh 34-second cycle of changing paint flow, starlight, sky density and music speed. While enabled, Time alone controls music speed. Stop Time returns to normal flow and mouse-controlled music speed. F pauses or resumes the running cycle together with the painting and music. Zooming and world navigation remain available. |
-| **Start Time / Stop Time** | Start Time begins a fresh 34-second cycle of changing paint flow, starlight and sky density. Stop Time returns to normal flow. F pauses or resumes the running cycle together with the painting and music. |
 | **F** | Pauses or resumes paint flow, the Time cycle and music, including transition sounds. Navigation controls remain available. |
 | **C** | Toggles cursor disturbance and star-hover light. Developer only, not shown in guidance for user |
 | **[ / ]** | Decreases or increases flow strength. Developer only, not shown in guidance for user |
