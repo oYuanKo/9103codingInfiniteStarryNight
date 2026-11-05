@@ -112,15 +112,13 @@ There is one p5 application, with one `setup()` and `draw()` entry point in `ske
 
 ## AI acknowledgement
 
-This README was initially generated with AI assistance and is to be reviewed and edited by each group member.
-
 [ChatGPT](https://chatgpt.com/overview/) and [Codex](https://openai.com/codex/) from OpenAI were used to help with difficult features and improve code quality, as recorded in the project's earlier README. AI also assisted in consolidating this README from the repository documentation and current code.
 
-### Yuan Kuang
+### Yuan Kuang:
 
 #### AI tools and scope
 
-I used OpenAI's ChatGPT and its coding tools extensively to generate and revise substantial parts of my contribution to this project. This included the painted landscape and brush rendering, cursor-driven interaction and zoom, nested-world navigation, close-up brush detail, and star-hover effects. AI also assisted with later integration work, including the Time controls, audio-reactive effects, debugging, code review, testing, and editing this README.
+I used OpenAI's ChatGPT and its coding tools to generate and revise substantial parts of my contribution to this project. This included the painted landscape and brush rendering, cursor-driven interaction and zoom, nested-world navigation, close-up brush detail, and star-hover effects. AI also assisted with later integration work, including the Time controls, audio-reactive effects, debugging, code review, testing, and editing this README.
 
 Some commit messages were automatically generated using GitHub Copilot.
 
@@ -147,9 +145,11 @@ These skills provided instructions for AI-assisted review; they were not indepen
 
 This statement describes AI use in my own contribution and my later changes to shared files. Other team members' AI use is acknowledged separately.
 
-### Qingyang Fang
+### Qingyang Fang:
 
-### Yang Wu
+
+
+### Yang Wu:
 
 the existing acknowledgement states that ChatGPT/Codex assisted with the Time implementation, shared pause and vortex fix. The Time code uses an elapsed-time clock, keyframe interpolation and saved paint layers. The shared pause stores playing sounds and remaining timer durations so they resume from the same place. The vortex repair adjusts existing brush geometry to fill the centre gap.
 
