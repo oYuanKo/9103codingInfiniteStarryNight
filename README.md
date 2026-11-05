@@ -116,8 +116,16 @@ This README was initially generated with AI assistance and is to be reviewed and
 
 [ChatGPT](https://chatgpt.com/overview/) and [Codex](https://openai.com/codex/) from OpenAI were used to help with difficult features and improve code quality, as recorded in the project's earlier README. AI also assisted in consolidating this README from the repository documentation and current code.
 
-- **Yuan Kuang:** **[TEAM TO CONFIRM: identify the tools used, the specific features/files they helped with, what code or suggestions were adopted, and how that work was checked.]** The core techniques are explained above; this note is needed to identify which parts were AI-assisted accurately.
+- **Yuan Kuang:** I used OpenAI’s ChatGPT and its coding tools to generate and revise parts of my contribution to this project. This included the painted landscape and brush rendering, cursor-driven interaction and zoom, nested-world navigation, close-up brush detail, and star-hover effects. AI also assisted with later integration work, including the Time controls, audio-reactive effects, debugging, code review, testing, and editing this README.
+
+The AI-generated code uses seeded randomness and noise to create repeatable variations between worlds. A shader animates the painted image by changing its sampling positions. Camera coordinate conversion and parent–child world links support zooming and navigation between worlds. For the audio-reactive effects, a Web Audio AnalyserNode reads frequency data from the background music; the smoothed frequency bands are then mapped to village lighting and cypress movement and brightness.
+
+I developed the creative concept and direction for my contribution, including the idea of a recursive universe in which users can zoom into a star and discover another version of the artwork. I decided how I wanted the artwork to look, feel, and respond to interaction, and guided its development through multiple iterations.
+
+When I encountered visual or technical problems, I described them to AI and asked for possible approaches. I compared the suggested options and made the final decisions about which direction to take. I also tested successive versions and gave specific feedback on issues such as ripple-like movement, blurred brushstrokes during zoom, and transitions between worlds. Based on these observations, I directed further revisions until the result matched my intended experience.
+
 - **Qingyang Fang:** **[TO BE COMPLETED BY QINGYANG FANG]**
+
 - **Yang Wu:** the existing acknowledgement states that ChatGPT/Codex assisted with the Time implementation, shared pause and vortex fix. The Time code uses an elapsed-time clock, keyframe interpolation and saved paint layers. The shared pause stores playing sounds and remaining timer durations so they resume from the same place. The vortex repair adjusts existing brush geometry to fill the centre gap. 
 
 
@@ -135,7 +143,6 @@ These links identify the artwork and document APIs used in the implementation. T
 - [p5.js `lerp()`](https://p5js.org/reference/p5/lerp/): documents interpolation used in the Time curves and other smooth changes.
 - **Audio references: [TO BE COMPLETED BY QINGYANG FANG]**
 
-**[TEAM TO CONFIRM: add any tutorials, external examples, borrowed/adapted code or other visual references actually used during development. For each, link the original source and explain the relevant file/function and changes made. Documentation links above do not replace those credits.]**
 
 ### Code Structures
 
