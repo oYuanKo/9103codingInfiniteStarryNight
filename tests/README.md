@@ -51,3 +51,35 @@ No test was deleted: each has distinct coverage or unresolved historical value, 
 
 Only README interaction instructions and tests changed. Production rendering, input, Time and audio code are unchanged. No AudioV2 work, Git synchronization, commit or push was performed. Remote main was inspected read-only and differs from the local main reference (ancestry was not fetched or verified); this task stays on the existing finalising branch.
 
+
+### Audio-driven painting prototype (Audiov2)
+
+`node tests/audio-reactivity.node.cjs` checks frequency/bin selection, silence,
+bounded envelope smoothing, no-source decay, reset and world geometry.
+The existing audio-time, audio-cycle and shared-pause tests remain relevant.
+
+`audio_reactivity.js` reads one BGM-only AnalyserNode (2048-point FFT):
+60–250 Hz warms twelve village house centres; 300–2400 Hz bends the cypress
+tip by at most 12 internal pixels (mid-band power 0.75, bottom 12% anchored) with its base fixed; 3500–10000 Hz adds
+at most 18% of the tree's existing pigment (square-root envelope makes weak high bands more visible). These are prototype tuning values.
+Band energy is summed in linear power, mapped from -55 to -18 dB, then
+attack/release smoothed and bounded. No clock or random signal drives these effects.
+
+The tap follows each BGM's existing filters and crossfade, before hover volume
+and transition ducking. The transition cue is excluded. No new media source,
+microphone or audible output path is created. Existing hover controls remain.
+F freezes the response; R clears it; silence decays to the unchanged painting.
+The original per-world cached painting stays intact; shader coordinates use
+each portal side's world geometry before blending. Geometry is weakly cached.
+Opening with file:// retains the existing audio fallback but has no FFT response;
+use Live Server / localhost. Browser/system output mute cannot be detected by
+Web Audio; media-element mute is respected.
+
+API reference (not a claim of copied implementation):
+https://www.w3.org/TR/webaudio-1.1/#AnalyserNode
+The frequency mapping and painting shader are original project prototype code.
+
+The refined tree warp transports its silhouette with a smooth narrow background
+margin; it has no independent oscillation. Four of twelve village lights use
+muted cream/ochre colours and varied sizes; compact soft support stays inside
+the existing house bodies. Tree high-frequency glow is unchanged.

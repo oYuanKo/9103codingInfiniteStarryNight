@@ -23,6 +23,8 @@ const detachAudioModuleV1 = (() => {
     // use Web Audio filters and a limiter on localhost or HTTPS.
     const useWebAudio = location.protocol !== 'file:' && !!AudioContextClass;
     const context = useWebAudio ? new AudioContextClass() : null;
+    const painting = typeof AudioPaintingV2 !== "undefined" ? AudioPaintingV2 : null;
+    const analyser = context && painting ? painting.attach(context) : null;
     let compressor = null;
     if (context) {
         compressor = context.createDynamicsCompressor();
@@ -37,7 +39,7 @@ const detachAudioModuleV1 = (() => {
         master.connect(context.destination);
     }
 
-    function makeCleanChain(source, initialGain, highpassHz, lowpassHz) {
+    function makeCleanChain(source, initialGain, highpassHz, lowpassHz, analyse = false) {
         if (!context) return { level: null, fade: null };
         const highpass = context.createBiquadFilter();
         const lowpass = context.createBiquadFilter();
@@ -56,7 +58,16 @@ const detachAudioModuleV1 = (() => {
         lowpass.connect(level);
         level.connect(fade);
         fade.connect(compressor);
-        return { level, fade };
+        // Tap filtered BGM before hover volume/ducking, weighted by the same crossfade.
+        // The cue uses analyse=false and cannot drive the painting.
+        let analysis = null;
+        if (analyse && analyser) {
+            analysis = context.createGain();
+            analysis.gain.value = 0;
+            lowpass.connect(analysis);
+            analysis.connect(analyser);
+        }
+        return { level, fade, analysis };
     }
 
     for (let i = 0; i < trackPaths.length; i++) {
@@ -68,12 +79,13 @@ const detachAudioModuleV1 = (() => {
         element.playbackRate = 1;
         element.preservesPitch = true;
         const chain = context
-            ? makeCleanChain(context.createMediaElementSource(element), 0, 48, 15500)
+            ? makeCleanChain(context.createMediaElementSource(element), 0, 48, 15500, true)
             : { level: null, fade: null };
         tracks.push({ element, ...chain,
             fadeAmount: i === 0 ? 1 : 0, fadeTarget: i === 0 ? 1 : 0 });
     }
     if (tracks[0].fade) tracks[0].fade.gain.value = 1;
+    if (tracks[0].analysis) tracks[0].analysis.gain.value = 1;
 
     const jingleElement = new Audio('assets/starfield-transition.wav');
     jingleElement.preload = 'auto';
@@ -290,6 +302,7 @@ const detachAudioModuleV1 = (() => {
 
     const offReset = bridge.onReset(() => {
         audioEpoch++;
+        if (painting) painting.reset();
         for (const timer of audioTimers) cancelAudioTimer(timer);
         pauseTimers.clear();
         pausedElements.clear();
@@ -304,6 +317,7 @@ const detachAudioModuleV1 = (() => {
             track.element.currentTime = 0;
             track.element.playbackRate = 1;
             track.fadeAmount = track.fadeTarget = index === 0 ? 1 : 0;
+            if (track.analysis) track.analysis.gain.value = track.fadeAmount;
             if (track.fade) {
                 track.fade.gain.cancelScheduledValues(context.currentTime);
                 track.fade.gain.setValueAtTime(track.fadeAmount, context.currentTime);
@@ -354,11 +368,13 @@ const detachAudioModuleV1 = (() => {
             if (track.level) {
                 track.level.gain.value = volume * 0.58 * transitionDuck;
                 track.fade.gain.value = track.fadeAmount;
+                if (track.analysis) track.analysis.gain.value = track.element.muted ? 0 : track.fadeAmount;
             } else {
                 track.element.volume = Math.max(0, Math.min(0.6, volume * 0.58 * transitionDuck * track.fadeAmount));
             }
             track.element.playbackRate = playbackRate;
         }
+        if (painting) painting.update(dt, !!context && context.state === "running" && tracks.some(t => !t.element.paused && !t.element.muted));
     });
 
     window.addEventListener('keydown', syncPauseFromKey, true);
@@ -386,6 +402,7 @@ const detachAudioModuleV1 = (() => {
         jingleElement.pause();
         jingleElement.removeAttribute('src');
         jingleElement.load();
+        if (painting) painting.reset();
         if (context) void context.close();
     }
     window.addEventListener('pagehide', dispose, { once: true });
