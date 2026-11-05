@@ -10,7 +10,7 @@ function captureWorldV2(seed = universeSeed) {
 
 function activateWorldV2(world) {
     universeSeed = world.seed;
-    for (const key of ['base', 'motion', 'marks', 'stars', 'village', 'cypress', 'time', 'detailSource']) {
+    for (const key of ['base', 'stars', 'village', 'cypress', 'detailSource']) {
         brushV2[key] = world[key];
     }
     brushFlowMap = world.flowMap;
@@ -74,7 +74,7 @@ function disposeWorldV2(world) {
     if (!world) return;
     disposeBrushDetailsV2(world.detailSource);
     world.detailSource = null;
-    for (const key of ['base', 'motion', 'flowMap']) {
+    for (const key of ['base', 'flowMap']) {
         const resource = world[key];
         if (!resource) continue;
         // p5's shared WebGL renderer keeps strong texture-cache references.
@@ -107,7 +107,6 @@ function trimWorldCacheV2(reserve = nestedV2.preload ? 1 : 0) {
         if (count <= limit) break;
         if (protectedNodes.has(node)) continue;
         node.flowTime = node.world.flowTime;
-        node.time = node.world.time;
         disposeWorldV2(node.world);
         node.world = null; // Keep seed, links and cameras for incremental regeneration.
         count--;
@@ -127,8 +126,8 @@ function prepareWorldV2(node) {
     clearChildPreloadV2();
     trimWorldCacheV2(1);
     nestedV2.preload = { node, phase: 'painting', steps: buildBrushV2Steps(node.seed, true, node.variedStars),
-        world: { seed: node.seed, base: null, motion: null, marks: [], stars: [],
-            village: null, cypress: null, time: 0, flowMap: null, flowTime: 0, detailSource: null } };
+        world: { seed: node.seed, base: null, stars: [],
+            village: null, cypress: null, flowMap: null, flowTime: 0, detailSource: null } };
 }
 
 function startChildPreloadV2(star) {
@@ -167,7 +166,6 @@ function updateChildPreloadV2() {
                     } else {
                         job.node.world = job.world;
                         job.world.flowTime = job.node.flowTime || 0;
-                        job.world.time = job.node.time || 0;
                         job.node.used = ++nestedV2.clock;
                         nestedV2.preload = null;
                         break;
@@ -316,11 +314,6 @@ function updateStarEntryV2(dt) {
     else if (tr.targetProgress === 1 && tr.progress > 0.998) finishPortalV2(true);
 }
 
-function smoothPortalV2(t) {
-    t = constrain(t, 0, 1);
-    return t * t * (3 - 2 * t);
-}
-
 function getStarEntryCameraV2() {
     const tr = nestedV2.transition;
     if (!tr) return v2Camera;
@@ -370,15 +363,8 @@ function resetNestedV2() {
     nestedV2.nodes.clear();
     nestedV2.current = nestedV2.transition = nestedV2.pending = null;
     // initBrushV2 must not remove an already disposed active canvas a second time.
-    brushV2.base = brushV2.motion = brushFlowMap = null;
+    brushV2.base = brushFlowMap = null;
     brushV2.detailSource = null;
     brushCursor.active = 0;
     brushCursor.wasInside = false;
-}
-
-function resetNestedCameraV2() {
-    nestedV2.entryIntent = null;
-    if (nestedV2.transition) finishPortalV2(nestedV2.transition.direction === 'out');
-    nestedV2.pending = null;
-    v2Camera.reset();
 }

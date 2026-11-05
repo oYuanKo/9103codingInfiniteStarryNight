@@ -1,7 +1,7 @@
 # Group integration (API v1)
 
 The active app is the Nested Universe painting. No Audio/Time module is required
-for startup. The archived prototype in legacy/ is not loaded.
+for startup. The page loads only the current application.
 
 ## Ownership and load order
 
@@ -30,8 +30,7 @@ Otherwise it returns frozen, detached data:
 - canvas: logical width/height (800/600), not CSS display dimensions.
 - loading: whether a requested navigation is waiting for generation.
 - flow: enabled, paused, speed, strength and cursorEnabled.
-- visual: `particles` is the current world's animated brush-mark count plus
-  currently drawn star-hover light strokes; `cursorIntensity` is normalized
+- visual: `particles` is the count of currently drawn star-hover light strokes; `cursorIntensity` is normalized
   cursor disturbance used by the flow shader; `hoverSpread` is the normalized
   visible star-halo spread, and `pointerSpeed` is smoothed screen-pointer speed
   normalized to 900 logical pixels/second. These detached values are available
@@ -46,7 +45,7 @@ contract against accidental writes, not a security sandbox for arbitrary JS.
 
 Each subscription returns an idempotent unsubscribe function. No p5 globals are
 replaced. Frame callbacks receive raw p5 deltaTime in milliseconds and a snapshot;
-Space leaves the draw loop running, so time modules must inspect state.flow.paused
+F leaves the draw loop running, so time modules must inspect state.flow.paused
 and decide their own policy. Callbacks should be short and synchronous where
 possible. Thrown errors/rejected promises disable that subscription and produce
 one warning, rather than interrupting core rendering.
@@ -102,41 +101,14 @@ modules write it, last writer wins. Do not infer an automatic mixing policy.
 Unsubscribing stops callbacks but does not reset shared parameters; coordinate
 restoration rather than silently overwriting the other member's settings.
 
-## Presentation and testing
+## Presentation and verification
 
 The canvas stays 800x600. ui_overlay.js sizes the DOM canvas at 4:3 with integer
 CSS dimensions; p5 performs its built-in pointer mapping. Never multiply mouseX
 or mouseY by display scale again. H or the guide button toggles instructions.
-Q/W/E, F, Space, C, R and bracket controls remain available without a debug HUD.
-
-Run the seven existing browser suites plus tests/refactor.browser.cjs and
- tests/app.browser.cjs. Prerequisites: Node.js, the Playwright package available
-to Node, installed Microsoft Edge (msedge channel), and access to the p5 CDN.
-For example, install the test dependency with
-`npm install --no-save --package-lock=false playwright`.
-
-A fresh checkout includes tests/fixtures/refactor-pixels-baseline.json; simply run
-`node tests/refactor.browser.cjs`. No ignored log, screenshot or manual baseline
-reconstruction is needed. Include the JSON fixture in the reviewed commit.
-
-The fixture records archived-source hashes (LF/CRLF independent), browser/p5
-versions and reference image hashes. These image hashes are diagnostic, not a
-cross-machine pass/fail gate: browser/GPU/rasterisation and asset-build timing
-can differ. The hard assertion compares old and new draw functions pixel-for-pixel
-in the SAME browser context, on the SAME world assets, for seeds 12/89/205 and
-portal depths 20/60/80 percent. No pixel tolerance is used. This isolates lifecycle
-refactoring, not independent changes to shared painting algorithms; keep the other
-regression suites and manual visual review.
-
-Only when intentionally updating the archived reference, regenerate with
-`node tests/refactor.browser.cjs --original --baseline` and review the JSON diff.
-The harness boots legacy/sketch.js with its archived supporting scripts, excludes
-the refactored app/input controllers, verifies the runtime, and writes only after
-checks pass. --baseline without --original is rejected. Normal tests never rewrite
-the fixture, and archived-source changes fail provenance validation.
-
-A test server must serve CSS as text/css and JS as JavaScript. Generated
-PNG/WebM and temporary log files remain ignored by Git.
+F pauses/resumes flow, Time and music; R restarts seed 12. C and brackets are
+developer controls. Space retains native button activation only.
+Serve CSS as text/css and JS as JavaScript when previewing the current app.
 
 Manually check your module with pause/resume, seed resets, portal reversal,
 multiple levels, resize, and no module attached. Unsubscribe/re-attach several
@@ -149,23 +121,4 @@ Create a separate branch from the latest shared main baseline for each member
 (e.g. audio/<name>, time/<name>). Keep module changes small, describe API needs,
 and run regressions before review. Review core-file changes together; integrate
 one member at a time and retest. Do not overwrite another member's uncommitted
-files or merge the historical prototype back into the active application.
-Preserve the existing v3 Time-based work; review and integrate it separately
-after updating its branch with main through the agreed group workflow.
-
-## Accepted production portal (Step 11 finalisation)
-
-Mode A, the original Step 6D.3 portal, is now the only production renderer.
-There are no Cosmic Threshold flags, experimental script dependencies or review
-mode switches. The integration API and camera/navigation contracts are unchanged.
-Historical B/C sources, tests and comparison notes are preserved under
-[experiments/cosmic_threshold/](experiments/cosmic_threshold/README.md); those
-archived suites are not production tests or standalone demos.
-
-Run node tests/production_portal.browser.cjs for same-environment accepted-A
-pixel equivalence and absence of experimental resources. Its version-controlled
-reference works on a fresh clone without generated logs. See
-[tests/PRODUCTION_PORTAL.md](tests/PRODUCTION_PORTAL.md) for before/after evidence.
-Also run navigation, portal, spatial, detail, hierarchy, hover, hover_detail,
-app and refactor browser suites. Generated PNG/WebM/log files remain ignored.
-The original-only refactor fixture and its provenance are unchanged.
+files. Preserve each mechanic owner's current implementation and retest shared changes.

@@ -138,12 +138,6 @@ function* paintBrushMountainsSteps(g) {
     }
 }
 
-function paintBrushMountains(g) {
-    for (const _ of paintBrushMountainsSteps(g)) {
-        // Complete the painting synchronously
-    }
-}
-
 // How strongly should the mountains move?
 function getMountainFlowWeight(x, y) {
     let weight = 1.0;

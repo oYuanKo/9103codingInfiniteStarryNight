@@ -7,7 +7,7 @@ function setupPaintingAppV2() {
     canvas.mouseOut(() => { brushCursor.inside = false; });
     pixelDensity(1);
     textFont('Arial');
-    initBrushV2(universeSeed, false, false);
+    initBrushV2(universeSeed);
     initBrushFlowShader();
     v2Camera = new ZoomCameraV2();
     paintingPresentationV2.init(canvas);
@@ -35,7 +35,7 @@ function restartPaintingV2(seed = 12) {
     if (!Number.isSafeInteger(seed) || seed < 0) throw new TypeError('Expected a non-negative integer seed');
     resetNestedV2();
     universeSeed = seed;
-    initBrushV2(seed, false, false);
+    initBrushV2(seed);
     rebuildBrushFlowMap();
     brushFlowTime = 0;
     v2Camera.reset();

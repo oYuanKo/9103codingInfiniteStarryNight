@@ -56,8 +56,7 @@ const { StarryNight, publishGroupFrameV2, queueGroupPortalV2, publishGroupResetV
             camera: cameraCopy(portal ? getStarEntryCameraV2() : v2Camera),
             // Detached visual controls for optional modules. Include currently drawn
             // hover-light strokes so the count changes with the visible interaction.
-            visual: Object.freeze({ particles: (brushV2.marks?.length || 0) +
-                    (starHoverLightV2.stats?.drawn || 0),
+            visual: Object.freeze({ particles: (starHoverLightV2.stats?.drawn || 0),
                 cursorIntensity: Math.max(0, Math.min(1, brushCursor.active || 0)),
                 hoverSpread: hoverSpread(), pointerSpeed }),
             portal: portal ? Object.freeze({ ...portalCopy(portal), childCamera: cameraCopy(render.childCamera) }) : null,
