@@ -12,27 +12,6 @@ The viewer can disturb the flow with the mouse, awaken light around a star, and 
 
 The picture is generated from brushstrokes rather than displayed as a downloaded painting image. Each world has a seeded layout, so we can return to the same composition while its animation continues to change.
 
-## Run the project
-
-Use a desktop browser with WebGL, a mouse or trackpad, and a keyboard. The current entry point is `index.html`.
-
-1. Download the repository, or clone it:
-
-   ```bash
-   git clone https://github.com/oYuanKo/9103codingInfiniteStarryNight.git
-   cd 9103codingInfiniteStarryNight
-   ```
-
-2. Serve the project folder through a local HTTP server. For example, if Python 3 is installed:
-
-   ```bash
-   python3 -m http.server 8000
-   ```
-
-3. Open `http://localhost:8000` and click the painting to start music.
-
-There is no build step. `index.html` loads **p5.js 1.11.11 from cdnjs**, so this version needs an internet connection for that script. Serving over HTTP also enables the Web Audio processing path. Opening the file directly uses a simpler audio fallback and is not the recommended way to run it.
-
 ## How to interact
 
 Start by watching the painting for about 35 seconds, then explore it with the mouse.
@@ -53,7 +32,6 @@ Start by watching the painting for about 35 seconds, then explore it with the mo
 | **Q / W / E** | Rebuilds the world using seed 12, 89 or 205, and restarts the Time cycle. |
 | **H** or the guide button | Shows or hides the interaction guide. |
 
-Audio may need an initial click, key press or wheel gesture. If the guide button has keyboard focus, Space activates that button instead of the painting's pause control. The Time cycle pauses during world loading, portal transitions and hidden browser tabs. A cancelled portal resumes the previous cycle; a completed world change starts a new cycle.
 
 ## Team responsibilities
 
@@ -69,8 +47,6 @@ These are the main responsibilities, not exclusive ownership of every shared fil
 
 ### 1. Perlin Noise and Randomness: building the painting
 
-**Main responsibility: Yuan**
-
 `brush_renderer_v2.js` builds the sky from curved brush marks. Perlin noise gives neighbouring positions related directions and colours, while random variation changes individual marks' position, length, width and tone. This keeps neighbouring strokes related without making every mark identical. A separate vortex influence bends the directions around the centre of the sky. `artwork.js` adds the landscape, village and cypress.
 
 Both `randomSeed()` and `noiseSeed()` are set when a world is generated. The same seed and generation conditions reproduce the base composition. A child world's seed is derived from its parent seed and the selected star ID, so a particular entrance has a stable destination. The navigation graph stores the actual parent-child relationship separately from these seeds.
@@ -78,8 +54,6 @@ Both `randomSeed()` and `noiseSeed()` are set when a world is generated. The sam
 The painting is drawn into an offscreen buffer and reused. A direction texture stores horizontal direction, vertical direction and local movement strength in its colour channels. In `brush_flow_shader.js`, the fragment shader reads this texture and shifts where it samples the painted image over time. The main animation therefore does not need to redraw every original brushstroke each frame. Lower movement weights around important forms help keep the composition recognisable.
 
 ### 2. User input, nested worlds and close-up detail
-
-**Main responsibility: Yuan**
 
 `zoom_camera.js` converts between screen and painting coordinates. Zoom is centred on the pointer, so the area being explored stays near the cursor. Normal camera zoom runs from 1× to 3×. Continuing inward over a major star or the moon starts a portal into a child painting; continuing outward at 1× opens the parent world.
 
@@ -91,13 +65,9 @@ The title describes the feeling of continuing into connected worlds. Detail has 
 
 ### 3. Audio-based interactions
 
-**Main responsibility: Qingyang Fang**
-
 **[TO BE COMPLETED BY QINGYANG FANG]**
 
 ### 4. Time: changing the painting's rhythm
-
-**Main responsibility: Yang Wu**
 
 The Time mechanic repeats over **34 seconds**. It begins gently, gradually accelerates, reaches a short rounded peak near 30 seconds, then settles to rest as the paint blending becomes strongest. The same painting starts moving again slowly. Its clarity and sky highlights return with the restarting movement rather than through a separate fade timer.
 
