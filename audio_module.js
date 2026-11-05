@@ -1,8 +1,9 @@
 // Listening prototype: remap the existing smooth paint-speed curve, with no extra clock.
 // Returning null leaves the original mouse-speed behaviour in control when Time is off.
+// AI acknowledgement (Yuan): Time-to-music rate mapping was generated and revised with OpenAI ChatGPT and its coding tools; it follows the shared cycle instead of a separate clock. This note covers Yuan's added mapping, not the original audio module.
 function musicRateFromTimeV2(time) {
     if (!time?.enabled) return null;
-    const {seconds, paintSpeed, peakTime, restartTime, startSpeed, peakSpeed} = time;
+    const { seconds, paintSpeed, peakTime, restartTime, startSpeed, peakSpeed } = time;
     if (![seconds, paintSpeed, peakTime, restartTime, startSpeed, peakSpeed].every(Number.isFinite) ||
         startSpeed <= 0 || peakSpeed <= startSpeed) return 1;
     const unit = value => Math.max(0, Math.min(1, value));
@@ -14,7 +15,7 @@ function musicRateFromTimeV2(time) {
 // Scene music, transition jingle, and sound processing for the interactive painting.
 const detachAudioModuleV1 = (() => {
     const bridge = typeof StarryNight !== 'undefined' ? StarryNight : null;
-    if (!bridge) return () => {};
+    if (!bridge) return () => { };
 
     const trackPaths = ['assets/scene-01.mp3', 'assets/scene-02.wav', 'assets/scene-03.mp3'];
     const tracks = [];
@@ -58,8 +59,7 @@ const detachAudioModuleV1 = (() => {
         lowpass.connect(level);
         level.connect(fade);
         fade.connect(compressor);
-        // Tap filtered BGM before hover volume/ducking, weighted by the same crossfade.
-        // The cue uses analyse=false and cannot drive the painting.
+
         let analysis = null;
         if (analyse && analyser) {
             analysis = context.createGain();
@@ -81,8 +81,10 @@ const detachAudioModuleV1 = (() => {
         const chain = context
             ? makeCleanChain(context.createMediaElementSource(element), 0, 48, 15500, true)
             : { level: null, fade: null };
-        tracks.push({ element, ...chain,
-            fadeAmount: i === 0 ? 1 : 0, fadeTarget: i === 0 ? 1 : 0 });
+        tracks.push({
+            element, ...chain,
+            fadeAmount: i === 0 ? 1 : 0, fadeTarget: i === 0 ? 1 : 0
+        });
     }
     if (tracks[0].fade) tracks[0].fade.gain.value = 1;
     if (tracks[0].analysis) tracks[0].analysis.gain.value = 1;
@@ -276,7 +278,7 @@ const detachAudioModuleV1 = (() => {
         const start = () => {
             if (epoch !== audioEpoch) return;
             if (disposed || (!audioPaused && context && context.state !== 'running')) return;
-            try { jingleElement.currentTime = 0; } catch (_) {}
+            try { jingleElement.currentTime = 0; } catch (_) { }
             if (jingleChain.fade && context) {
                 const now = context.currentTime;
                 const fade = jingleChain.fade.gain;
@@ -288,7 +290,7 @@ const detachAudioModuleV1 = (() => {
             playElement(jingleElement);
             jingleTimer = createAudioTimer(() => {
                 jingleElement.pause();
-                try { jingleElement.currentTime = 0; } catch (_) {}
+                try { jingleElement.currentTime = 0; } catch (_) { }
                 transitionDuckTarget = 1;
                 if (jingleChain.fade && context) {
                     jingleChain.fade.gain.setValueAtTime(1, context.currentTime);
@@ -300,6 +302,7 @@ const detachAudioModuleV1 = (() => {
         else void startAudio().then(start);
     }
 
+    // AI acknowledgement (Yuan): Yuan's reset integration was generated and revised with OpenAI ChatGPT and its coding tools. It clears pending audio state and restarts the root track and painting response.
     const offReset = bridge.onReset(() => {
         audioEpoch++;
         if (painting) painting.reset();
@@ -340,6 +343,7 @@ const detachAudioModuleV1 = (() => {
         }
         if (event.phase !== 'end' || event.outcome !== 'completed') return;
         applyTimeMusicRate(bridge.getState());
+        // AI acknowledgement (Yuan): This signed-depth song selection was added with OpenAI ChatGPT and its coding tools, cycling tracks 1/2/3 and preserving the corresponding track on return.
         if (event.direction === 'in') sceneDepth++;
         else if (event.direction === 'out') sceneDepth--;
         // Signed depth preserves the song on return, including worlds outside the root.
@@ -359,6 +363,7 @@ const detachAudioModuleV1 = (() => {
         const volumeTarget = 0.11 + spread * 0.82;
         const rateTarget = 1 + speed * 0.9;
         volume += (volumeTarget - volume) * (1 - Math.exp(-elapsed / 0.38));
+        // AI acknowledgement (Yuan): This rate-ownership guard was added with OpenAI ChatGPT and its coding tools: mouse speed changes playback rate only while Time is off.
         if (!timeControlsRate) playbackRate += (rateTarget - playbackRate) * (1 - Math.exp(-elapsed / 0.22));
         const duckTime = transitionDuckTarget < transitionDuck ? 0.09 : 0.55;
         transitionDuck += (transitionDuckTarget - transitionDuck) * (1 - Math.exp(-elapsed / duckTime));
@@ -374,6 +379,7 @@ const detachAudioModuleV1 = (() => {
             }
             track.element.playbackRate = playbackRate;
         }
+        // AI acknowledgement (Yuan): This FFT frame update was added with OpenAI ChatGPT and its coding tools, using actual BGM playback state rather than a synthetic animation signal.
         if (painting) painting.update(dt, !!context && context.state === "running" && tracks.some(t => !t.element.paused && !t.element.muted));
     });
 

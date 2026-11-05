@@ -1,4 +1,4 @@
-// Single application lifecycle; world/rendering algorithms stay in their modules.
+// AI acknowledgement (Yuan): Coordinating setup, frame order and full-world restart was generated and revised for Yuan with OpenAI ChatGPT and its coding tools.
 let universeSeed = 12;
 let v2Camera = null;
 function setupPaintingAppV2() {
@@ -40,9 +40,11 @@ function restartPaintingV2(seed = 12) {
     brushFlowTime = 0;
     v2Camera.reset();
     starHoverLightV2.worlds.clear();
-    Object.assign(brushCursor, {wasInside: false, x: -1000, y: -1000, vx: 0, vy: 0, speed: 0, active: 0});
-    Object.assign(brushFlowSettings, {speed: 1.2, strength: 5, enabled: true, paused: false,
-        cursorEnabled: true, timeBlend: 0, restartOffset: 0});
+    Object.assign(brushCursor, { wasInside: false, x: -1000, y: -1000, vx: 0, vy: 0, speed: 0, active: 0 });
+    Object.assign(brushFlowSettings, {
+        speed: 1.2, strength: 5, enabled: true, paused: false,
+        cursorEnabled: true, timeBlend: 0, restartOffset: 0
+    });
     resetTimeEffectV2();
     currentWorldNodeV2();
     paintingPresentationV2.syncTimeButton();

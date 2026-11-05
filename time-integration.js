@@ -1,20 +1,23 @@
-// deltaTime 的单位是毫秒：由已有 draw() 每帧提供，不再另开一个计时器。
+// The unit for deltaTime is milliseconds; it is provided per frame by the existing draw() function, so there is no need to set up a separate timer.
 let timeWorldId = null;
 let timePreviousFlow = null;
 let timeSkipNextFrame = false;
 let timeCalmPreview = new TimeMechanic();
-const timeOffAppearance = {starBrightness: 0.2, strokeGap: 36, visibleStars: 12, extraMarkOpacity: 0};
-let timeDisplay = {...timeOffAppearance};
+const timeOffAppearance = { starBrightness: 0.2, strokeGap: 36, visibleStars: 12, extraMarkOpacity: 0 };
+let timeDisplay = { ...timeOffAppearance };
 let timeDisplayTransition = null;
 
+// AI acknowledgement (Yuan): Yuan's Time-button integration was generated and revised with OpenAI ChatGPT and its coding tools. It starts fresh cycles and transitions the layer appearance; 
+// AI acknowledgement (Yuan): it does not claim authorship of the original time curve.
 function setTimeEffectEnabled(enabled) {
     if (timeMechanic.enabled === enabled) return;
-    timeDisplayTransition = {from: {...timeDisplay}, elapsed: 0};
+    timeDisplayTransition = { from: { ...timeDisplay }, elapsed: 0 };
     timeMechanic.enabled = enabled;
     timeWorldId = null;
     if (enabled) timeMechanic.reset();
 }
 
+// AI acknowledgement (Yuan): This appearance-transition integration was added with OpenAI ChatGPT and its coding tools for Yuan's Start/Stop Time controls, respecting pause, loading and visibility gates.
 function updateTimeDisplay(elapsedMilliseconds, state) {
     const target = timeMechanic.enabled ? {
         starBrightness: timeMechanic.starBrightness,
@@ -22,7 +25,7 @@ function updateTimeDisplay(elapsedMilliseconds, state) {
         visibleStars: timeMechanic.visibleStars,
         extraMarkOpacity: 1
     } : timeOffAppearance;
-    if (!timeDisplayTransition) { timeDisplay = {...target}; return; }
+    if (!timeDisplayTransition) { timeDisplay = { ...target }; return; }
     // Blend appearance only; the existing 34-second curve remains unchanged.
     if (!state.flow.paused && state.flow.enabled && !state.portal && !state.loading &&
         !document.hidden && !timeSkipNextFrame && Number.isFinite(elapsedMilliseconds)) {
@@ -36,7 +39,7 @@ function updateTimeDisplay(elapsedMilliseconds, state) {
     if (progress === 1) timeDisplayTransition = null;
 }
 
-// 回到页面时，不把后台停留的时间一次算进去。
+// When returning to the page, do not include the time spent in the background in the total duration.
 document.addEventListener('visibilitychange', function () {
     timeSkipNextFrame = true;
 });
@@ -65,7 +68,7 @@ function updateTimeMechanic(elapsedMilliseconds, state) {
     }
 
     if (timeWorldId !== state.universe.id) {
-        // 首次进入、成功换世界、Q/W/E 换种子：都从 Calm 开始。
+        // Upon initial entry, successfully switching worlds, or changing seeds via Q/W/E: always start from "Calm."
         timeWorldId = state.universe.id;
         timeMechanic.reset();
     } else {
@@ -74,33 +77,34 @@ function updateTimeMechanic(elapsedMilliseconds, state) {
     updateTimeDisplay(elapsedMilliseconds, state);
     timeSkipNextFrame = false;
 
-    // Time 传入速度、融合量和起步位移；方向、颜色和笔触仍来自原画。
-    // strength 仍由原来的 [ / ] 按键控制。
+    // Time: Takes speed, blending amount, and initial displacement as inputs; direction, color, and brush strokes remain derived from the original artwork.
+    // Strength: Continues to be controlled by the original [/] key.
     brushFlowSettings.speed = timeMechanic.paintSpeed;
     brushFlowSettings.timeBlend = timeMechanic.paintBlend;
     brushFlowSettings.restartOffset = timeMechanic.paintRestartOffset;
 }
 
 function advanceTimeIfPlaying(elapsedMilliseconds, state) {
-    // 每行检查一种暂停情况，全部通过后才计时。
-    if (state.flow.paused) return; // 按下了 Space。
-    if (!state.flow.enabled) return; // 按 F 关闭了流动。
-    if (state.portal) return; // 正在两个世界之间穿梭。
-    if (state.loading) return; // 正在等待世界生成。
-    if (document.hidden) return; // 页面进入后台。
-    if (timeSkipNextFrame) return; // 刚从后台返回。
+    // Each line checks for a specific pause condition; the timer only starts once all conditions are met.
+    if (state.flow.paused) return; // Space was pressed.
+    if (!state.flow.enabled) return; // Flow was disabled by pressing F.
+    if (state.portal) return; // Moving between two worlds.
+    if (state.loading) return; // Waiting for world generation.
+    if (document.hidden) return; // The page has entered the background.
+    if (timeSkipNextFrame) return; // Just returned from the background.
     timeMechanic.update(elapsedMilliseconds);
 }
 
 // The shader now transports and exposes Time paint together with the base paint.
+// AI acknowledgement (Yuan): Yuan's portal-layer integration was generated and revised with OpenAI ChatGPT and its coding tools. It selects each world's Time appearance before shader blending.
 function getTimePaintLayers(parentWorld, portal) {
     if (!portal) {
         const parent = drawTimePaintLayer(0, parentWorld, timeDisplay);
-        return {parent, child: parent};
+        return { parent, child: parent };
     }
     const leavingChild = nestedV2.transition.direction === 'out';
     const destinationTime = timeMechanic.enabled
-        ? {...timeCalmPreview, extraMarkOpacity: 1} : timeOffAppearance;
+        ? { ...timeCalmPreview, extraMarkOpacity: 1 } : timeOffAppearance;
     const parentTime = leavingChild ? destinationTime : timeDisplay;
     const childTime = leavingChild ? timeDisplay : destinationTime;
     // Preserve the existing extra-mark exit/entry windows during navigation.
@@ -114,18 +118,18 @@ function getTimePaintLayers(parentWorld, portal) {
 }
 
 function getTimeFlow(world, x, y) {
-    // 工程连接：复用组员的 flowMap，和已有悬停光效读取方向的方式相同。
-    // 读取像素里保存的横、纵方向和流动强度。
+    // Engineering integration: Reuse the flowMap from the team member’s implementation; the method for retrieving the flow direction is the same as that used for the existing hover-effect logic. 
+    // Reads the horizontal and vertical direction components, as well as the flow intensity, stored within the pixel data.
     let map = world.flowMap;
     let column = Math.floor(x / width * map.width);
     let row = Math.floor(y / height * map.height);
-    // 坐标必须落在流向图里面，不能读到图外。
+    // The coordinates must fall within the flow diagram; reading outside the diagram is not permitted.
     if (column < 0) column = 0;
     if (column >= map.width) column = map.width - 1;
     if (row < 0) row = 0;
     if (row >= map.height) row = map.height - 1;
 
-    // 每个像素占 4 个数。组员用前两个数保存横、纵方向。
+    // Each pixel occupies 4 values. The first two values ​​are used to store the horizontal and vertical components.
     let pixelNumber = row * map.width + column;
     let firstChannel = pixelNumber * 4;
     let directionX = map.pixels[firstChannel] / 127.5 - 1;
@@ -138,10 +142,13 @@ function getTimeFlow(world, x, y) {
         directionX = 0;
         directionY = 0;
     }
-    return {x: directionX, y: directionY,
+    return {
+        x: directionX, y: directionY,
         strength: map.pixels[firstChannel + 2] / 255,
-        angle: Math.atan2(directionY, directionX)};
+        angle: Math.atan2(directionY, directionX)
+    };
 }
+
 
 function resetTimeEffectV2() {
     timeMechanic.enabled = false;
@@ -149,6 +156,6 @@ function resetTimeEffectV2() {
     timeWorldId = null;
     timePreviousFlow = null;
     timeSkipNextFrame = true;
-    timeDisplay = {...timeOffAppearance};
+    timeDisplay = { ...timeOffAppearance };
     timeDisplayTransition = null;
 }

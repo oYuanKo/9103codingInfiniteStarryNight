@@ -1,3 +1,4 @@
+// AI acknowledgement (Yuan): Brush-generation work was generated and revised with OpenAI ChatGPT and its coding tools. This attribution does not cover other members' contributions.
 
 const BRUSH_V2_SETTINGS = {
     spacing: 8,
@@ -206,7 +207,7 @@ function paintV2Stroke(g, x, y, angle, len, weight, colour, alpha = 255) {
             g.timeStarStrokes ? 0 : alpha);
     }
     if (g.timeStarStrokes) {
-        g.timeStarStrokes.push({x, y, angle, len, weight, colour, alpha});
+        g.timeStarStrokes.push({ x, y, angle, len, weight, colour, alpha });
         return;
     }
     const ux = cos(angle);
@@ -367,7 +368,7 @@ function* buildBrushV2Steps(seed, preservePrevious = false, variedStars = false)
 }
 
 function fillBrushSkyGapRow(g, y) {
-    // get() 取邻近颜料色，再沿流向补一小笔；放大时也会重画同一笔。
+    // get() samples a nearby pigment color and adds a small stroke along the flow direction; this same stroke is redrawn when the view is zoomed in.
     // Read an unchanged scanline once instead of one canvas readback per pixel.
     // Refresh after every painted stroke: later samples must see earlier paint.
     const canReadRow = g.pixelDensity() === 1;
@@ -378,7 +379,7 @@ function fillBrushSkyGapRow(g, y) {
         if (pixel[0] > 16 || pixel[1] > 32 || pixel[2] > 64) continue;
         if (brushV2.cypress && pointInCypress(x, y, brushV2.cypress)) continue;
         const neighbours = [g.get(x - 4, y), g.get(x + 4, y),
-            g.get(x, y - 4), g.get(x, y + 4)];
+        g.get(x, y - 4), g.get(x, y + 4)];
         const colour = [0, 0, 0];
         let count = 0;
         for (const sample of neighbours) {
@@ -548,7 +549,7 @@ function paintStarCore(g, star) {
 
         const alpha = map(ratio, 0, 1, 240, 145);
 
-        // 第一笔盖住中心，避免随机分布留下蓝色缺口；随机数调用顺序不变。
+        // The first stroke covers the center, preventing gaps of blue from appearing due to random distribution; the order of random number calls remains unchanged.
         paintV2Stroke(
             g, i === 0 ? star.x : px, i === 0 ? star.y : py, angle,
             len, i === 0 ? max(weight, star.radius * 0.55) : weight,
@@ -622,8 +623,10 @@ function spreadWorldStarsV2(stars, seed) {
         for (const star of majors) {
             let candidate = null;
             for (let n = 0; n < 200; n++) {
-                const point = {...star, x: width * (.08 + sample() * .84),
-                    y: height * (.08 + sample() * .40)};
+                const point = {
+                    ...star, x: width * (.08 + sample() * .84),
+                    y: height * (.08 + sample() * .40)
+                };
                 if (safeMajorStarV2(point, placed)) { candidate = point; break; }
             }
             if (!candidate) break;
@@ -633,20 +636,20 @@ function spreadWorldStarsV2(stars, seed) {
     }
     // Safe, spaced fallback for the supported five-star, 800x600 composition.
     if (!layout) {
-        const points = [[.1375,.1167],[.35,.1167],[.5875,.1167],[.30625,.45],[.7125,.45]];
+        const points = [[.1375, .1167], [.35, .1167], [.5875, .1167], [.30625, .45], [.7125, .45]];
         for (let i = points.length - 1; i > 0; i--) {
             const j = Math.floor(sample() * (i + 1));
             [points[i], points[j]] = [points[j], points[i]];
         }
-        layout = majors.map((star, i) => ({...star, x: points[i][0] * width, y: points[i][1] * height}));
+        layout = majors.map((star, i) => ({ ...star, x: points[i][0] * width, y: points[i][1] * height }));
     }
     for (let i = 0; i < majors.length; i++) Object.assign(majors[i], layout[i]);
     // Keep supporting stars unless a moved major halo now occupies their place.
     const placed = [moon, ...majors];
-    const safeSmall = star => Math.hypot(star.x - width * .48, star.y - height * .32) >= Math.min(width,height) * .14 &&
+    const safeSmall = star => Math.hypot(star.x - width * .48, star.y - height * .32) >= Math.min(width, height) * .14 &&
         placed.every(other => Math.hypot(star.x - other.x, star.y - other.y) >=
             (other.type === 'moon' ? other.radius * 3.8 + 12 :
-             other.type === 'major' ? other.radius * 2.8 + 12 : other.radius + star.radius + 8));
+                other.type === 'major' ? other.radius * 2.8 + 12 : other.radius + star.radius + 8));
     for (const star of stars.filter(star => star.type === 'small')) {
         if (!safeSmall(star)) {
             let found = false;

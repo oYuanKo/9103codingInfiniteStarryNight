@@ -1,4 +1,4 @@
-// Nodes own resources; edges own navigation. Seeds are not world identities.
+// AI acknowledgement (Yuan): Incremental generation, reversible portals and bounded drawing-resource caching was generated and revised for Yuan with OpenAI ChatGPT and its coding tools. 
 const nestedV2 = {
     current: null, nodes: new Set(), transition: null, pending: null,
     preload: null, entryIntent: null, clock: 0, cacheLimit: 8
@@ -125,9 +125,13 @@ function prepareWorldV2(node) {
     if (node.world || nestedV2.preload?.node === node) return;
     clearChildPreloadV2();
     trimWorldCacheV2(1);
-    nestedV2.preload = { node, phase: 'painting', steps: buildBrushV2Steps(node.seed, true, node.variedStars),
-        world: { seed: node.seed, base: null, stars: [],
-            village: null, cypress: null, flowMap: null, flowTime: 0, detailSource: null } };
+    nestedV2.preload = {
+        node, phase: 'painting', steps: buildBrushV2Steps(node.seed, true, node.variedStars),
+        world: {
+            seed: node.seed, base: null, stars: [],
+            village: null, cypress: null, flowMap: null, flowTime: 0, detailSource: null
+        }
+    };
 }
 
 function startChildPreloadV2(star) {
@@ -264,10 +268,12 @@ function portalGeometryV2(edge) {
 function beginPortalV2(nav) {
     const geometry = portalGeometryV2(nav.edge);
     const start = nav.direction === 'in' ? 0 : 1;
-    nestedV2.transition = { ...nav, ...geometry, progress: start,
+    nestedV2.transition = {
+        ...nav, ...geometry, progress: start,
         targetProgress: constrain(start + nav.distance / geometry.range, 0, 1),
         parent: nav.edge.parent.world, child: nav.edge.child.world,
-        childCamera: nav.direction === 'out' ? nav.originCamera : stillCameraV2() };
+        childCamera: nav.direction === 'out' ? nav.originCamera : stillCameraV2()
+    };
     nestedV2.pending = null;
     activateWorldV2(nav.edge.parent.world);
     queueGroupPortalV2('begin', nestedV2.transition);
@@ -341,9 +347,11 @@ function getPortalRenderV2() {
     const zoom = endpoint.zoom * scale;
     return {
         child: tr.child, anchorX, anchorY,
-        childCamera: { zoom,
+        childCamera: {
+            zoom,
             x: anchorX + (endpoint.x - anchorX) * scale,
-            y: anchorY + (endpoint.y - anchorY) * scale },
+            y: anchorY + (endpoint.y - anchorY) * scale
+        },
         progress: tr.progress
     };
 }
