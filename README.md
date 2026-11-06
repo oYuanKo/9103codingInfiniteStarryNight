@@ -10,17 +10,19 @@ The viewer can disturb the flow with the mouse, awaken light around a star, and 
 
 The picture is generated from brushstrokes rather than displayed as a downloaded painting image. Each world has a seeded layout, so we can return to the same composition while its animation continues to change.
 
+
 ## How to open and run
 
-Use a current desktop browser with WebGL support and an internet connection (p5.js loads from a CDN). Run the project through a local web server so the music-driven visual effects work.
-
-1. On this repository's **Code** tab, select the **main** branch, then click the green **Code** button → **Download ZIP**.
-2. Extract the ZIP and open the extracted project folder, usually `9103codingInfiniteStarryNight-main`. Find the folder containing `index.html`; keep the JavaScript files, `style.css` and `assets` folder together.
-3. Open Terminal (macOS/Linux) or PowerShell (Windows). Type `cd "FULL_PATH_TO_PROJECT_FOLDER"`, replacing the quoted placeholder with the full path to the folder containing `index.html`, then press Enter.
-4. With **Python 3 installed**, run `python3 -m http.server 8000 --bind 127.0.0.1` on macOS/Linux, or `py -3 -m http.server 8000 --bind 127.0.0.1` on Windows. If Python is not installed, install Python 3 from the official Python website first, or use an existing local web-server tool to serve this same folder.
-5. Keep the terminal open and visit **http://localhost:8000/** in your browser. Wait for the painting to appear, then click it to unlock sound if needed. Press **Ctrl+C** in the terminal when finished to stop the server.
+You will need Git, Visual Studio Code, the Live Server extension, a desktop browser with WebGL support, and an internet connection.
+1. Open Command Prompt or Terminal in the location where you want to save the project. Clone the repository:
+   git clone https://github.com/oYuanKo/9103codingInfiniteStarryNight.git
+2. Open the cloned 9103codingInfiniteStarryNight folder in Visual Studio Code.
+3. In the VS Code Explorer, right-click index.html and select Open with Live Server. The artwork will open in your browser.
+4. Click the page once to enable sound if needed.
+Run the project through Live Server rather than opening index.html directly, so the audio-driven visual effects can work. An internet connection is needed to load p5.js.
 
 Avoid opening `index.html` by double-clicking: `file://` uses direct audio playback without the FFT-driven visual response. An HTTPS-hosted copy also supports these effects.
+
 
 ## How to interact
 
@@ -51,6 +53,7 @@ The painting starts with normal flow and Time off. Select **Start Time** to watc
 | **Yang Wu** | **Time-based effects and transitions**. Developed the Time cycle, changing small stars and sky highlights, and their integration with the shared painting. Also implemented shared audio pause/resume (originally triggered by Space, now by F) and repaired gaps in the painted vortex. |
 
 These are the main responsibilities, not exclusive ownership of every shared file. Audio, Time and the core painting work together through the same application. Yang's shared audio-pause work and Yuan's later Time-rendering refinements build on the relevant mechanic owner's implementation.
+
 
 ## Techniques and technical decisions
 
@@ -99,6 +102,7 @@ Three files organise this mechanic:
 Repeated `lerp()` calls join the keyframe values into smooth curves. Cosine easing softens star fades. `Math.random()` creates uneven star timings without advancing the p5 random sequence used to generate the painting. These choices combine arrays, loops, interpolation and maths while keeping the base composition stable.
 
 The shared shader combines samples of moving paint to create the exposure/blending effect. The small stars and extra sky strokes use the painting's flow direction, strength and clock so they settle and restart with the rest of the paint. Yang developed the Time mechanic and its integration; Yuan's later shared-renderer work refined how these Time layers move and blend with the base painting.
+
 
 ## Code structure and collaboration
 
@@ -164,8 +168,6 @@ ChatGPT/Codex was used as a supplementary tool during development. It helped ref
 This immersive *Starry Night* design links audio to user spatial navigation to maintain the painting’s dreamlike tone. I let audio govern overall visual presentation, and added dedicated transition sound effects for scene transitions. Three music tracks shift with movement depth, with adjustable tempo modes and shortcut keys for intuitive control. Using Web‑Audio FFT analysis, I map music frequencies to subtle visual deformations of the village and cypress tree, constraining effects to preserve original artwork shapes. 
 
 Reactions rely mainly on pre‑composed background audio; transition audio triggers separate scene shifts instead of feeding into visual frequency analysis. Browser autoplay and protocol limitations are handled with suitable fallbacks for stable cross‑platform performance.
-
-
 
 ### Yang Wu:
 
