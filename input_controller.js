@@ -41,14 +41,20 @@ function handlePaintingKeyV2(event) {
 
 }
 
+//AI acknowledgment: ChatGPT was used by Yuan to fix a bug: adjust guidance visibility bug due to different resolution
 function handlePaintingWheelV2(event) {
-  if (
-    !v2Camera ||
-    mouseX < 0 || mouseX > width ||
-    mouseY < 0 || mouseY > height
-  ) {
-    return false;
-  }
+  const canvas = document.querySelector('#artwork canvas');
+  // Only the painted canvas owns wheel input; guide/page scrolling stays native.
+  if (!canvas || event?.target !== canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  const { clientX, clientY } = event;
+  if (!Number.isFinite(clientX) || !Number.isFinite(clientY) ||
+      rect.width <= 0 || rect.height <= 0 ||
+      clientX < rect.left || clientX >= rect.right ||
+      clientY < rect.top || clientY >= rect.bottom) return;
+  const x = (clientX - rect.left) * width / rect.width;
+  const y = (clientY - rect.top) * height / rect.height;
+  if (!v2Camera) return false;
 
   // Reverse or continue an active transition
   if (handleStarEntryWheelV2(event.delta)) {
@@ -58,7 +64,7 @@ function handlePaintingWheelV2(event) {
   // Zooming in beyond the normal limit on a star
   if (
     event.delta < 0 &&
-    tryEnterStarV2(mouseX, mouseY, event.delta)
+    tryEnterStarV2(x, y, event.delta)
   ) {
     return false;
   }
@@ -66,7 +72,7 @@ function handlePaintingWheelV2(event) {
   if (event.delta > 0 && tryExitWorldV2(event.delta)) return false;
 
   // Otherwise keep normal cursor-centred zoom
-  v2Camera.zoomAt(event.delta, mouseX, mouseY);
+  v2Camera.zoomAt(event.delta, x, y);
 
   return false;
 }
